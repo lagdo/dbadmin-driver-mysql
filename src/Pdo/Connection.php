@@ -1,8 +1,8 @@
 <?php
 
-namespace Lagdo\Adminer\Driver\MySql\Pdo;
+namespace Lagdo\DbAdmin\Driver\MySql\Pdo;
 
-use Lagdo\Adminer\Driver\Db\Pdo\Connection as PdoConnection;
+use Lagdo\DbAdmin\Driver\Db\Pdo\Connection as PdoConnection;
 
 use PDO;
 

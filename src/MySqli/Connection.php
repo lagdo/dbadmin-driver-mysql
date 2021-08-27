@@ -1,12 +1,12 @@
 <?php
 
-namespace Lagdo\Adminer\Driver\MySql\MySqli;
+namespace Lagdo\DbAdmin\Driver\MySql\MySqli;
 
-use Lagdo\Adminer\Driver\AdminerDbInterface;
-use Lagdo\Adminer\Driver\AdminerUtilInterface;
-use Lagdo\Adminer\Driver\Db\ServerInterface;
-use Lagdo\Adminer\Driver\Db\ConnectionInterface;
-use Lagdo\Adminer\Driver\Db\ConnectionTrait;
+use Lagdo\DbAdmin\Driver\AdminerDbInterface;
+use Lagdo\DbAdmin\Driver\AdminerUtilInterface;
+use Lagdo\DbAdmin\Driver\Db\ServerInterface;
+use Lagdo\DbAdmin\Driver\Db\ConnectionInterface;
+use Lagdo\DbAdmin\Driver\Db\ConnectionTrait;
 
 use MySQLi;
 

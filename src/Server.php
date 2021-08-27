@@ -1,8 +1,8 @@
 <?php
 
-namespace Lagdo\Adminer\Driver\MySql;
+namespace Lagdo\DbAdmin\Driver\MySql;
 
-use Lagdo\Adminer\Driver\Db\Server as AbstractServer;
+use Lagdo\DbAdmin\Driver\Db\Server as AbstractServer;
 
 class Server extends AbstractServer
 {
