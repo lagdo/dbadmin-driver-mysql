@@ -66,6 +66,14 @@ class Connection extends MySQLi implements ConnectionInterface
         return $return;
     }
 
+    /**
+     * @inheritDoc
+     */
+    public function getServerInfo()
+    {
+        return $this->server_info;
+    }
+
     public function set_charset($charset)
     {
         if (parent::set_charset($charset)) {

@@ -41,7 +41,7 @@ class Driver extends AbstractDriver
     public function slowQuery($query, $timeout)
     {
         if ($this->server->min_version('5.7.8', '10.1.2')) {
-            if (preg_match('~MariaDB~', $this->connection->server_info)) {
+            if (preg_match('~MariaDB~', $this->connection->getServerInfo())) {
                 return "SET STATEMENT max_statement_time=$timeout FOR $query";
             } elseif (preg_match('~^(SELECT\b)(.+)~is', $query, $match)) {
                 return "$match[1] /*+ MAX_EXECUTION_TIME(" . ($timeout * 1000) . ") */ $match[2]";
@@ -68,7 +68,7 @@ class Driver extends AbstractDriver
 
     public function tableHelp($name)
     {
-        $maria = preg_match('~MariaDB~', $this->connection->server_info);
+        $maria = preg_match('~MariaDB~', $this->connection->getServerInfo());
         if ($this->server->information_schema($this->server->current_db())) {
             return strtolower(($maria ? "information-schema-$name-table/" : str_replace("_", "-", $name) . "-table.html"));
         }
