@@ -2,40 +2,15 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\MySqli;
 
-use Lagdo\DbAdmin\Driver\DbInterface;
-use Lagdo\DbAdmin\Driver\UtilInterface;
-use Lagdo\DbAdmin\Driver\Db\ServerInterface;
-use Lagdo\DbAdmin\Driver\Db\ConnectionInterface;
-use Lagdo\DbAdmin\Driver\Db\ConnectionTrait;
+use Lagdo\DbAdmin\Driver\Db\Connection as AbstractConnection;
 
 use MySQLi;
 
 /**
  * MySQL driver to be used with the mysqli PHP extension.
  */
-class Connection extends MySQLi implements ConnectionInterface
+class Connection extends AbstractConnection
 {
-    use ConnectionTrait;
-
-    /**
-     * The constructor
-     *
-     * @param DbInterface $db
-     * @param UtilInterface $util
-     * @param ServerInterface $server
-     * @param string $extension
-     */
-    public function __construct(DbInterface $db, UtilInterface $util, ServerInterface $server, string $extension)
-    {
-        parent::init();
-        $this->extension = 'MySQLi';
-
-        $this->db = $db;
-        $this->util = $util;
-        $this->server = $server;
-        $this->extension = $extension;
-    }
-
     /**
     * @inheritDoc
     */
@@ -47,13 +22,18 @@ class Connection extends MySQLi implements ConnectionInterface
         $port = null;
         $socket = null;
 
+        // Create the MuSQLi client
+        $this->client = new MySQLi();
+        $this->client->init();
+
         mysqli_report(MYSQLI_REPORT_OFF); // stays between requests, not required since PHP 5.3.4
         list($host, $port) = explode(":", $server, 2); // part after : is used for port or socket
         $ssl = $this->db->connectSsl();
         if ($ssl) {
-            $this->ssl_set($ssl['key'], $ssl['cert'], $ssl['ca'], '', '');
+            $this->client->ssl_set($ssl['key'], $ssl['cert'], $ssl['ca'], '', '');
         }
-        $return = @$this->real_connect(
+
+        $return = @$this->client->real_connect(
             ($server != "" ? $host : ini_get("mysqli.default_host")),
             ($server . $username != "" ? $username : ini_get("mysqli.default_user")),
             ($server . $username . $password != "" ? $password : ini_get("mysqli.default_pw")),
@@ -62,7 +42,7 @@ class Connection extends MySQLi implements ConnectionInterface
             (!is_numeric($port) ? $port : $socket),
             ($ssl ? MYSQLI_CLIENT_SSL_DONT_VERIFY_SERVER_CERT : 0) // (not available before PHP 5.6.16)
         );
-        $this->options(MYSQLI_OPT_LOCAL_INFILE, false);
+        $this->client->options(MYSQLI_OPT_LOCAL_INFILE, false);
         return $return;
     }
 
@@ -71,22 +51,44 @@ class Connection extends MySQLi implements ConnectionInterface
      */
     public function getServerInfo()
     {
-        return $this->server_info;
+        return $this->client->server_info;
     }
 
+    /**
+     * @inheritDoc
+     */
+    public function select_db($database)
+    {
+        return $this->client->select_db($database);
+    }
+
+    /**
+     * @inheritDoc
+     */
     public function set_charset($charset)
     {
-        if (parent::set_charset($charset)) {
+        if ($this->client->set_charset($charset)) {
             return true;
         }
         // the client library may not support utf8mb4
-        parent::set_charset('utf8');
-        return $this->query("SET NAMES $charset");
+        $this->client->set_charset('utf8');
+        return $this->client->query("SET NAMES $charset");
     }
 
+    /**
+     * @inheritDoc
+     */
+    public function query($query, $unbuffered = false)
+    {
+        return $this->client->query($query, $unbuffered);
+    }
+
+    /**
+     * @inheritDoc
+     */
     public function result($query, $field = 0)
     {
-        $result = $this->query($query);
+        $result = $this->client->query($query);
         if (!$result) {
             return false;
         }
@@ -94,8 +96,35 @@ class Connection extends MySQLi implements ConnectionInterface
         return $row[$field];
     }
 
+    /**
+     * @inheritDoc
+     */
     public function quote($string)
     {
-        return "'" . $this->escape_string($string) . "'";
+        return "'" . $this->client->escape_string($string) . "'";
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function next_result()
+    {
+        return $this->client->next_result();
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function multi_query($query)
+    {
+        return $this->client->multi_query($query);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function store_result($result = null)
+    {
+        return $this->client->store_result($result);
     }
 }
