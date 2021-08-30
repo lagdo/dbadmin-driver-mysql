@@ -47,7 +47,7 @@ class Server extends AbstractServer
 
         list($server, $options) = $this->db->getOptions();
         if (!$this->connection->open($server, $options)) {
-            $return = $this->connection->error;
+            $return = $this->util->error();
             // windows-1250 - most common Windows encoding
             if (function_exists('iconv') && !$this->util->is_utf8($return) &&
                 strlen($s = iconv("windows-1250", "utf-8", $return)) > strlen($return)) {
@@ -384,11 +384,12 @@ class Server extends AbstractServer
 
     /**
      * Get escaped error message
+     *
      * @return string
      */
     public function error()
     {
-        return $this->util->h(preg_replace('~^You have an error.*syntax to use~U', "Syntax error", $this->connection->error));
+        return $this->util->h(preg_replace('~^You have an error.*syntax to use~U', "Syntax error", $this->db->error()));
     }
 
     /**
