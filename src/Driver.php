@@ -12,7 +12,7 @@ class Driver extends AbstractDriver
             $this->server->table($table) . " ()\nVALUES ()"));
     }
 
-    public function insertUpdate($table, $rows, $primary)
+    public function insertOrUpdate($table, $rows, $primary)
     {
         $columns = array_keys(reset($rows));
         $prefix = "INSERT INTO " . $this->server->table($table) . " (" . implode(", ", $columns) . ") VALUES\n";
@@ -40,7 +40,7 @@ class Driver extends AbstractDriver
 
     public function slowQuery($query, $timeout)
     {
-        if ($this->server->min_version('5.7.8', '10.1.2')) {
+        if ($this->server->minVersion('5.7.8', '10.1.2')) {
             if (preg_match('~MariaDB~', $this->connection->getServerInfo())) {
                 return "SET STATEMENT max_statement_time=$timeout FOR $query";
             } elseif (preg_match('~^(SELECT\b)(.+)~is', $query, $match)) {
@@ -69,10 +69,10 @@ class Driver extends AbstractDriver
     public function tableHelp($name)
     {
         $maria = preg_match('~MariaDB~', $this->connection->getServerInfo());
-        if ($this->server->information_schema($this->server->current_db())) {
+        if ($this->server->isInformationSchema($this->server->currentDatabase())) {
             return strtolower(($maria ? "information-schema-$name-table/" : str_replace("_", "-", $name) . "-table.html"));
         }
-        if ($this->server->current_db() == "mysql") {
+        if ($this->server->currentDatabase() == "mysql") {
             return ($maria ? "mysql$name-table/" : "system-database.html"); //! more precise link
         }
     }

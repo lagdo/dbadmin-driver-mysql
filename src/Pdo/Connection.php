@@ -20,7 +20,7 @@ class Connection extends PdoConnection
         $password = $options['password'];
 
         $options = array(PDO::MYSQL_ATTR_LOCAL_INFILE => false);
-        $ssl = $this->db->connectSsl();
+        $ssl = $this->db->sslOptions();
         if ($ssl) {
             if (!empty($ssl['key'])) {
                 $options[PDO::MYSQL_ATTR_SSL_KEY] = $ssl['key'];
@@ -41,15 +41,15 @@ class Connection extends PdoConnection
         return true;
     }
 
-    public function set_charset($charset)
+    public function setCharset($charset)
     {
         $this->query("SET NAMES $charset"); // charset in DSN is ignored before PHP 5.3.6
     }
 
-    public function select_db($database)
+    public function selectDatabase($database)
     {
         // database selection is separated from the connection so dbname in DSN can't be used
-        return $this->query("USE " . $this->server->idf_escape($database));
+        return $this->query("USE " . $this->server->escapeId($database));
     }
 
     public function query($query, $unbuffered = false)

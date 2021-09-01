@@ -28,7 +28,7 @@ class Connection extends AbstractConnection
 
         mysqli_report(MYSQLI_REPORT_OFF); // stays between requests, not required since PHP 5.3.4
         list($host, $port) = explode(":", $server, 2); // part after : is used for port or socket
-        $ssl = $this->db->connectSsl();
+        $ssl = $this->db->sslOptions();
         if ($ssl) {
             $this->client->ssl_set($ssl['key'], $ssl['cert'], $ssl['ca'], '', '');
         }
@@ -57,7 +57,7 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    public function select_db($database)
+    public function selectDatabase($database)
     {
         return $this->client->select_db($database);
     }
@@ -65,7 +65,7 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    public function set_charset($charset)
+    public function setCharset($charset)
     {
         if ($this->client->set_charset($charset)) {
             return true;
@@ -107,7 +107,7 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    public function next_result()
+    public function nextResult()
     {
         return $this->client->next_result();
     }
@@ -115,7 +115,7 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    public function multi_query($query)
+    public function multiQuery($query)
     {
         return $this->client->multi_query($query);
     }
@@ -123,7 +123,7 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    public function store_result($result = null)
+    public function storedResult($result = null)
     {
         return $this->client->store_result($result);
     }
