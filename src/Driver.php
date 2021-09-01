@@ -69,10 +69,10 @@ class Driver extends AbstractDriver
     public function tableHelp($name)
     {
         $maria = preg_match('~MariaDB~', $this->connection->getServerInfo());
-        if ($this->server->isInformationSchema($this->server->currentDatabase())) {
+        if ($this->server->isInformationSchema($this->server->selectedDatabase())) {
             return strtolower(($maria ? "information-schema-$name-table/" : str_replace("_", "-", $name) . "-table.html"));
         }
-        if ($this->server->currentDatabase() == "mysql") {
+        if ($this->server->selectedDatabase() == "mysql") {
             return ($maria ? "mysql$name-table/" : "system-database.html"); //! more precise link
         }
     }
