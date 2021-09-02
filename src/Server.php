@@ -9,7 +9,7 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
-    public function getName()
+    public function name()
     {
         return "MySQL";
     }
@@ -39,7 +39,7 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
-    public function getConnection()
+    public function connection()
     {
         if (!$this->connection) {
             return null;
@@ -389,7 +389,7 @@ class Server extends AbstractServer
      */
     public function error()
     {
-        return $this->util->h(preg_replace('~^You have an error.*syntax to use~U', "Syntax error", $this->db->error()));
+        return $this->util->html(preg_replace('~^You have an error.*syntax to use~U', "Syntax error", $this->db->error()));
     }
 
     /**
