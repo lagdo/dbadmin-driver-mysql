@@ -3,6 +3,7 @@
 namespace Lagdo\DbAdmin\Driver\MySql\MySqli;
 
 use Lagdo\DbAdmin\Driver\Db\StatementInterface;
+use Lagdo\DbAdmin\Driver\Db\StatementField;
 
 use mysqli_result;
 
@@ -22,6 +23,11 @@ class Statement implements StatementInterface
      */
     public $numRows = 0;
 
+    /**
+     * The constructor
+     *
+     * @param mysqli_result|bool $result
+     */
     public function __construct($result)
     {
         if (is_a($result, mysqli_result::class)) {
@@ -30,21 +36,37 @@ class Statement implements StatementInterface
         }
     }
 
+    /**
+     * @inheritDoc
+     */
     public function fetchAssoc()
     {
         return ($this->result) ? $this->result->fetch_assoc() : null;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function fetchRow()
     {
         return ($this->result) ? $this->result->fetch_row() : null;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function fetchField()
     {
-        return ($this->result) ? $this->result->fetch_field() : null;
+        if (!$this->result || !($field = $this->result->fetch_field())) {
+            return null;
+        }
+        return new StatementField($field->type, $field->type === 63, // 63 - binary
+            $field->name, $field->orgname, $field->table, $field->orgtable);
     }
 
+    /**
+     * The destructor
+     */
     public function __destruct()
     {
         if (($this->result)) {
