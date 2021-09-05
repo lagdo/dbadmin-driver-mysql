@@ -49,7 +49,7 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    public function getServerInfo()
+    public function serverInfo()
     {
         return $this->client->server_info;
     }
