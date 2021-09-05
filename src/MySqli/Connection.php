@@ -33,7 +33,7 @@ class Connection extends AbstractConnection
             $this->client->ssl_set($ssl['key'], $ssl['cert'], $ssl['ca'], '', '');
         }
 
-        $return = @$this->client->real_connect(
+        $connected = @$this->client->real_connect(
             ($server != "" ? $host : ini_get("mysqli.default_host")),
             ($server . $username != "" ? $username : ini_get("mysqli.default_user")),
             ($server . $username . $password != "" ? $password : ini_get("mysqli.default_pw")),
@@ -43,7 +43,7 @@ class Connection extends AbstractConnection
             ($ssl ? MYSQLI_CLIENT_SSL_DONT_VERIFY_SERVER_CERT : 0) // (not available before PHP 5.6.16)
         );
         $this->client->options(MYSQLI_OPT_LOCAL_INFILE, false);
-        return $return;
+        return $connected;
     }
 
     /**
@@ -80,7 +80,8 @@ class Connection extends AbstractConnection
      */
     public function query($query, $unbuffered = false)
     {
-        return $this->client->query($query, $unbuffered);
+        $result = $this->client->query($query, $unbuffered);
+        return ($result) ? new Statement($result) : null;
     }
 
     /**
@@ -123,8 +124,9 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    public function storedResult($result = null)
+    public function storedResult()
     {
-        return $this->client->store_result($result);
+        $result = $this->client->store_result();
+        return ($result) ? new Statement($result) : null;
     }
 }
