@@ -17,55 +17,49 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
-    protected function createConnection()
+    public function connect()
     {
-        if (($this->connection)) {
-            // Do not create if it already exists
-            return;
-        }
+        // if (($this->connection)) {
+        //     // Do not create if it already exists
+        //     return;
+        // }
 
+        $connection = null;
         if (extension_loaded("mysqli")) {
-            $this->connection = new MySqli\Connection($this->db, $this->util, $this, 'MySQLi');
+            $connection = new MySqli\Connection($this->db, $this->util, $this, 'MySQLi');
         }
         elseif (extension_loaded("pdo_mysql")) {
-            $this->connection = new Pdo\Connection($this->db, $this->util, $this, 'PDO_MySQL');
+            $connection = new Pdo\Connection($this->db, $this->util, $this, 'PDO_MySQL');
+        }
+        else {
+            throw new AuthException($this->util->lang('No package installed to connect to a MySQL server.'));
         }
 
-        if($this->connection !== null) {
-            $this->driver = new Driver($this->db, $this->util, $this, $this->connection);
-        }
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function connection()
-    {
-        if (!$this->connection) {
-            return null;
+        if ($this->connection === null) {
+            $this->connection = $connection;
+            $this->driver = new Driver($this->db, $this->util, $this, $connection);
         }
 
         list($server, $options) = $this->db->options();
-        if (!$this->connection->open($server, $options)) {
-            $return = $this->util->error();
+        if (!$connection->open($server, $options)) {
+            $error = $this->util->error();
             // windows-1250 - most common Windows encoding
-            if (function_exists('iconv') && !$this->util->isUtf8($return) &&
-                strlen($s = iconv("windows-1250", "utf-8", $return)) > strlen($return)) {
-                $return = $s;
+            if (function_exists('iconv') && !$this->util->isUtf8($error) &&
+                strlen($s = iconv("windows-1250", "utf-8", $error)) > strlen($error)) {
+                $error = $s;
             }
-            return $return;
+            throw new AuthException($error);
         }
 
-        // available in MySQLi since PHP 5.0.5
-        $this->connection->setCharset($this->charset());
-        $this->connection->query("SET sql_quote_show_create = 1, autocommit = 1");
-        if ($this->minVersion('5.7.8', 10.2, $this->connection)) {
+        // Available in MySQLi since PHP 5.0.5
+        $connection->setCharset($this->charset());
+        $connection->query("SET sql_quote_show_create = 1, autocommit = 1");
+        if ($this->minVersion('5.7.8', 10.2, $connection)) {
             $this->structuredTypes[$this->util->lang('Strings')][] = "json";
             $this->types["json"] = 4294967295;
         }
 
-        $this->driver = new Driver($this->db, $this->util, $this, $this->connection);
-        return $this->connection;
+        return $connection;
     }
 
     /**

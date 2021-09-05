@@ -32,12 +32,9 @@ class Connection extends PdoConnection
                 $options[PDO::MYSQL_ATTR_SSL_CA] = $ssl['ca'];
             }
         }
-        $this->dsn(
-            "mysql:charset=utf8;host=" . str_replace(":", ";unix_socket=", preg_replace('~:(\d)~', ';port=\1', $server)),
-            $username,
-            $password,
-            $options
-        );
+        $this->dsn("mysql:charset=utf8;host=" .
+            str_replace(":", ";unix_socket=", preg_replace('~:(\d)~', ';port=\1', $server)),
+            $username, $password, $options);
         return true;
     }
 

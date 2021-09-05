@@ -22,7 +22,7 @@ class Connection extends AbstractConnection
         $port = null;
         $socket = null;
 
-        // Create the MuSQLi client
+        // Create the MySQLi client
         $this->client = new MySQLi();
         $this->client->init();
 
