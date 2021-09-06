@@ -3,6 +3,7 @@
 namespace Lagdo\DbAdmin\Driver\MySql;
 
 use Lagdo\DbAdmin\Driver\Db\Server as AbstractServer;
+use Lagdo\DbAdmin\Driver\Db\TableField;
 
 class Server extends AbstractServer
 {
@@ -239,7 +240,7 @@ class Server extends AbstractServer
      */
     public function fields($table)
     {
-        $return = [];
+        $fields = [];
         foreach ($this->db->rows("SHOW FULL COLUMNS FROM " . $this->table($table)) as $row) {
             preg_match('~^([^( ]+)(?:\((.+)\))?( unsigned)?( zerofill)?$~', $row["Type"], $match);
             $matchCount = count($match);
@@ -248,25 +249,29 @@ class Server extends AbstractServer
             $match3 = $matchCount > 3 ? $match[3] : '';
             $match4 = $matchCount > 4 ? $match[4] : '';
 
-            $return[$row["Field"]] = array(
-                "field" => $row["Field"],
-                "full_type" => $row["Type"],
-                "type" => $match1,
-                "length" => $match2,
-                "unsigned" => ltrim($match3 . $match4),
-                "default" => ($row["Default"] != "" || preg_match("~char|set~", $match1) ? (preg_match('~text~', $match1) ? stripslashes(preg_replace("~^'(.*)'\$~", '\1', $row["Default"])) : $row["Default"]) : null),
-                "null" => ($row["Null"] == "YES"),
-                "auto_increment" => ($row["Extra"] == "auto_increment"),
-                "on_update" => (preg_match('~^on update (.+)~i', $row["Extra"], $match) ? $match1 : ""), //! available since MySQL 5.1.23
-                "collation" => $row["Collation"],
-                "privileges" => array_flip(preg_split('~, *~', $row["Privileges"])),
-                "comment" => $row["Comment"],
-                "primary" => ($row["Key"] == "PRI"),
+            $field = new TableField();
+
+            $field->name = $row["Field"];
+            $field->fullType = $row["Type"];
+            $field->type = $match1;
+            $field->length = $match2;
+            $field->unsigned = ltrim($match3 . $match4);
+            $field->default = ($row["Default"] != "" || preg_match("~char|set~", $match1) ?
+                (preg_match('~text~', $match1) ? stripslashes(preg_replace("~^'(.*)'\$~", '\1',
+                $row["Default"])) : $row["Default"]) : null);
+            $field->null = ($row["Null"] == "YES");
+            $field->autoIncrement = ($row["Extra"] == "auto_increment");
+            $field->onUpdate = (preg_match('~^on update (.+)~i', $row["Extra"], $match) ? $match1 : ""); //! available since MySQL 5.1.23
+            $field->collation = $row["Collation"];
+            $field->privileges = array_flip(preg_split('~, *~', $row["Privileges"]));
+            $field->comment = $row["Comment"];
+            $field->primary = ($row["Key"] == "PRI");
                 // https://mariadb.com/kb/en/library/show-columns/, https://github.com/vrana/adminer/pull/359#pullrequestreview-276677186
-                "generated" => preg_match('~^(VIRTUAL|PERSISTENT|STORED)~', $row["Extra"]),
-            );
+            $field->generated = preg_match('~^(VIRTUAL|PERSISTENT|STORED)~', $row["Extra"]);
+
+            $fields[$field->name] = $field;
         }
-        return $return;
+        return $fields;
     }
 
     /**
@@ -841,31 +846,31 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
-    public function convertField(array $field)
+    public function convertField($field)
     {
-        if (preg_match("~binary~", $field["type"])) {
-            return "HEX(" . $this->escapeId($field["field"]) . ")";
+        if (preg_match("~binary~", $field->type)) {
+            return "HEX(" . $this->escapeId($field->name) . ")";
         }
-        if ($field["type"] == "bit") {
-            return "BIN(" . $this->escapeId($field["field"]) . " + 0)"; // + 0 is required outside MySQLnd
+        if ($field->type == "bit") {
+            return "BIN(" . $this->escapeId($field->name) . " + 0)"; // + 0 is required outside MySQLnd
         }
-        if (preg_match("~geometry|point|linestring|polygon~", $field["type"])) {
-            return ($this->minVersion(8) ? "ST_" : "") . "AsWKT(" . $this->escapeId($field["field"]) . ")";
+        if (preg_match("~geometry|point|linestring|polygon~", $field->type)) {
+            return ($this->minVersion(8) ? "ST_" : "") . "AsWKT(" . $this->escapeId($field->name) . ")";
         }
     }
 
     /**
      * @inheritDoc
      */
-    public function unconvertField(array $field, $return)
+    public function unconvertField($field, $return)
     {
-        if (preg_match("~binary~", $field["type"])) {
+        if (preg_match("~binary~", $field->type)) {
             $return = "UNHEX($return)";
         }
-        if ($field["type"] == "bit") {
+        if ($field->type == "bit") {
             $return = "CONV($return, 2, 10) + 0";
         }
-        if (preg_match("~geometry|point|linestring|polygon~", $field["type"])) {
+        if (preg_match("~geometry|point|linestring|polygon~", $field->type)) {
             $return = ($this->minVersion(8) ? "ST_" : "") . "GeomFromText($return, SRID($field[field]))";
         }
         return $return;

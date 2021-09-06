@@ -51,8 +51,8 @@ class Driver extends AbstractDriver
 
     public function convertSearch($idf, $val, $field)
     {
-        return (preg_match('~char|text|enum|set~', $field["type"]) &&
-            !preg_match("~^utf8~", $field["collation"]) && preg_match('~[\x80-\xFF]~', $val['val']) ?
+        return (preg_match('~char|text|enum|set~', $field->type) &&
+            !preg_match("~^utf8~", $field->collation) && preg_match('~[\x80-\xFF]~', $val['val']) ?
             "CONVERT($idf USING " . $this->server->charset() . ")" : $idf
         );
     }
