@@ -191,10 +191,10 @@ class Server extends AbstractServer
     public function tableStatus($name = "", $fast = false)
     {
         $return = [];
-        foreach ($this->db->rows(
-            $fast && $this->minVersion(5)
-            ? "SELECT TABLE_NAME AS Name, ENGINE AS Engine, TABLE_COMMENT AS Comment FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() " . ($name != "" ? "AND TABLE_NAME = " . $this->quote($name) : "ORDER BY Name")
-            : "SHOW TABLE STATUS" . ($name != "" ? " LIKE " . $this->quote(addcslashes($name, "%_\\")) : "")
+        foreach ($this->db->rows($fast && $this->minVersion(5) ?
+            "SELECT TABLE_NAME AS Name, ENGINE AS Engine, TABLE_COMMENT AS Comment FROM information_schema.TABLES " .
+            "WHERE TABLE_SCHEMA = DATABASE() " . ($name != "" ? "AND TABLE_NAME = " . $this->quote($name) : "ORDER BY Name") :
+            "SHOW TABLE STATUS" . ($name != "" ? " LIKE " . $this->quote(addcslashes($name, "%_\\")) : "")
         ) as $row) {
             if ($row["Engine"] == "InnoDB") {
                 // ignore internal comment, unnecessary since MySQL 5.1.21
@@ -440,7 +440,7 @@ class Server extends AbstractServer
      */
     public function autoIncrement()
     {
-        $auto_increment_index = " PRIMARY KEY";
+        $autoIncrementIndex = " PRIMARY KEY";
         // don't overwrite primary key by auto_increment
         $query = $this->util->input();
         $table = $query->getTable();
@@ -449,31 +449,31 @@ class Server extends AbstractServer
         if ($table != "" && $autoIncrementField) {
             foreach ($this->indexes($table) as $index) {
                 if (in_array($fields[$autoIncrementField]["orig"], $index["columns"], true)) {
-                    $auto_increment_index = "";
+                    $autoIncrementIndex = "";
                     break;
                 }
                 if ($index["type"] == "PRIMARY") {
-                    $auto_increment_index = " UNIQUE";
+                    $autoIncrementIndex = " UNIQUE";
                 }
             }
         }
-        return " AUTO_INCREMENT$auto_increment_index";
+        return " AUTO_INCREMENT$autoIncrementIndex";
     }
 
     /**
      * Run commands to create or alter table
-     * @param string "" to create
-     * @param string new name
-     * @param array of array($orig, $process_field, $after)
-     * @param array of strings
-     * @param string
-     * @param string
-     * @param string
-     * @param string number
-     * @param string
+     * @param string $table "" to create
+     * @param string $name new name
+     * @param array $fields of array($orig, $process_field, $after)
+     * @param array $foreign of strings
+     * @param string $comment
+     * @param string $engine
+     * @param string $collation
+     * @param string $autoIncrement number
+     * @param string $partitioning
      * @return bool
      */
-    public function alterTable($table, $name, $fields, $foreign, $comment, $engine, $collation, $auto_increment, $partitioning)
+    public function alterTable($table, $name, $fields, $foreign, $comment, $engine, $collation, $autoIncrement, $partitioning)
     {
         $alter = [];
         foreach ($fields as $field) {
@@ -487,7 +487,7 @@ class Server extends AbstractServer
         $status = ($comment !== null ? " COMMENT=" . $this->quote($comment) : "")
             . ($engine ? " ENGINE=" . $this->quote($engine) : "")
             . ($collation ? " COLLATE " . $this->quote($collation) : "")
-            . ($auto_increment != "" ? " AUTO_INCREMENT=$auto_increment" : "")
+            . ($autoIncrement != "" ? " AUTO_INCREMENT=$autoIncrement" : "")
         ;
         if ($table == "") {
             return $this->db->queries("CREATE TABLE " . $this->table($name) . " (\n" . implode(",\n", $alter) . "\n)$status$partitioning");
@@ -768,10 +768,10 @@ class Server extends AbstractServer
      * @param string
      * @return string
      */
-    public function createTableSql($table, $auto_increment, $style)
+    public function createTableSql($table, $autoIncrement, $style)
     {
         $return = $this->connection->result("SHOW CREATE TABLE " . $this->table($table), 1);
-        if (!$auto_increment) {
+        if (!$autoIncrement) {
             $return = preg_replace('~ AUTO_INCREMENT=\d+~', '', $return); //! skip comments
         }
         return $return;
@@ -929,7 +929,7 @@ class Server extends AbstractServer
             $structuredTypes[$key] = array_keys($val);
         }
         return array(
-            'possibleDrivers' => array("MySQLi", "MySQL", "PDO_MySQL"),
+            'possibleDrivers' => array("MySQLi", "PDO_MySQL"),
             'jush' => "sql", ///< @var string JUSH identifier
             'types' => $types,
             'structuredTypes' => $structuredTypes,
