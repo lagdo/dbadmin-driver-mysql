@@ -28,7 +28,7 @@ class Connection extends AbstractConnection
 
         mysqli_report(MYSQLI_REPORT_OFF); // stays between requests, not required since PHP 5.3.4
         list($host, $port) = explode(":", $server, 2); // part after : is used for port or socket
-        $ssl = $this->db->sslOptions();
+        $ssl = $this->db->options('ssl');
         if ($ssl) {
             $this->client->ssl_set($ssl['key'], $ssl['cert'], $ssl['ca'], '', '');
         }

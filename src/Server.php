@@ -20,11 +20,6 @@ class Server extends AbstractServer
      */
     public function connect()
     {
-        // if (($this->connection)) {
-        //     // Do not create if it already exists
-        //     return;
-        // }
-
         $connection = null;
         if (extension_loaded("mysqli")) {
             $connection = new MySqli\Connection($this->db, $this->util, $this, 'MySQLi');
@@ -41,8 +36,7 @@ class Server extends AbstractServer
             $this->driver = new Driver($this->db, $this->util, $this, $connection);
         }
 
-        list($server, $options) = $this->db->options();
-        if (!$connection->open($server, $options)) {
+        if (!$connection->open($this->db->options('server'), $this->db->options())) {
             $error = $this->util->error();
             // windows-1250 - most common Windows encoding
             if (function_exists('iconv') && !$this->util->isUtf8($error) &&
@@ -342,11 +336,8 @@ class Server extends AbstractServer
      */
     public function view($name)
     {
-        return array("select" => preg_replace(
-            '~^(?:[^`]|`[^`]*`)*\s+AS\s+~isU',
-            '',
-            $this->connection->result("SHOW CREATE VIEW " . $this->table($name), 1)
-        ));
+        return array("select" => preg_replace('~^(?:[^`]|`[^`]*`)*\s+AS\s+~isU', '',
+            $this->connection->result("SHOW CREATE VIEW " . $this->table($name), 1)));
     }
 
     /**
