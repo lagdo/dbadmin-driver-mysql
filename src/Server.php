@@ -236,7 +236,7 @@ class Server extends AbstractServer
     /**
      * Get information about fields
      * @param string
-     * @return array array($name => array("field" => , "full_type" => , "type" => , "length" => , "unsigned" => , "default" => , "null" => , "auto_increment" => , "on_update" => , "collation" => , "privileges" => , "comment" => , "primary" => ))
+     * @return array
      */
     public function fields($table)
     {
@@ -296,7 +296,7 @@ class Server extends AbstractServer
     /**
      * Get foreign keys in table
      * @param string
-     * @return array array($name => array("db" => , "ns" => , "table" => , "source" => [], "target" => [], "on_delete" => , "on_update" => ))
+     * @return array array($name => array("db" => , "ns" => , "table" => , "source" => [], "target" => [], "onDelete" => , "onUpdate" => ))
      */
     public function foreignKeys($table)
     {
@@ -327,8 +327,8 @@ class Server extends AbstractServer
                     "target" => array_map(function ($idf) {
                         return $this->unescapeId($idf);
                     }, $target[0]),
-                    "on_delete" => ($matchCount > 6 ? $match[6] : "RESTRICT"),
-                    "on_update" => ($matchCount > 7 ? $match[7] : "RESTRICT"),
+                    "onDelete" => ($matchCount > 6 ? $match[6] : "RESTRICT"),
+                    "onUpdate" => ($matchCount > 7 ? $match[7] : "RESTRICT"),
                 );
             }
         }
@@ -446,7 +446,7 @@ class Server extends AbstractServer
     public function autoIncrement()
     {
         $autoIncrementIndex = " PRIMARY KEY";
-        // don't overwrite primary key by auto_increment
+        // don't overwrite primary key by auto increment
         $query = $this->util->input();
         $table = $query->getTable();
         $fields = $query->getFields();
