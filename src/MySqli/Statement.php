@@ -3,7 +3,7 @@
 namespace Lagdo\DbAdmin\Driver\MySql\MySqli;
 
 use Lagdo\DbAdmin\Driver\Db\StatementInterface;
-use Lagdo\DbAdmin\Driver\Db\StatementField;
+use Lagdo\DbAdmin\Driver\Entity\StatementField;
 
 use mysqli_result;
 
