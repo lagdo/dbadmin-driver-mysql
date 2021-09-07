@@ -907,12 +907,12 @@ class Server extends AbstractServer
 
     /**
      * Get driver config
-     * @return array array('possibleDrivers' => , 'jush' => , 'types' => , 'structuredTypes' => , 'unsigned' => , 'operators' => , 'functions' => , 'grouping' => , 'editFunctions' => )
+     * @return array array('drivers' => , 'jush' => , 'types' => , 'structuredTypes' => , 'unsigned' => , 'operators' => , 'functions' => , 'grouping' => , 'editFunctions' => )
      */
-    public function driverConfig()
+    protected function setConfig()
     {
-        $types = []; ///< @var array ($type => $maximum_unsigned_length, ...)
-        $structuredTypes = []; ///< @var array ($description => array($type, ...), ...)
+        $this->config->jush = 'sql';
+        $this->config->drivers = ["MySQLi", "PDO_MySQL"];
         foreach (array(
             $this->util->lang('Numbers') => array("tinyint" => 3, "smallint" => 5, "mediumint" => 8, "int" => 10, "bigint" => 20, "decimal" => 66, "float" => 12, "double" => 21),
             $this->util->lang('Date and time') => array("date" => 10, "datetime" => 19, "timestamp" => 19, "time" => 10, "year" => 4),
@@ -921,30 +921,22 @@ class Server extends AbstractServer
             $this->util->lang('Binary') => array("bit" => 20, "binary" => 255, "varbinary" => 65535, "tinyblob" => 255, "blob" => 65535, "mediumblob" => 16777215, "longblob" => 4294967295),
             $this->util->lang('Geometry') => array("geometry" => 0, "point" => 0, "linestring" => 0, "polygon" => 0, "multipoint" => 0, "multilinestring" => 0, "multipolygon" => 0, "geometrycollection" => 0),
         ) as $key => $val) {
-            $types += $val;
-            $structuredTypes[$key] = array_keys($val);
+            $this->config->types += $val;
+            $this->config->structuredTypes[$key] = array_keys($val);
         }
-        return array(
-            'possibleDrivers' => array("MySQLi", "PDO_MySQL"),
-            'jush' => "sql", ///< @var string JUSH identifier
-            'types' => $types,
-            'structuredTypes' => $structuredTypes,
-            'unsigned' => array("unsigned", "zerofill", "unsigned zerofill"), ///< @var array number variants
-            'operators' => array("=", "<", ">", "<=", ">=", "!=", "LIKE", "LIKE %%", "REGEXP", "IN", "FIND_IN_SET", "IS NULL", "NOT LIKE", "NOT REGEXP", "NOT IN", "IS NOT NULL", "SQL"), ///< @var array operators used in select
-            'functions' => array("char_length", "date", "from_unixtime", "lower", "round", "floor", "ceil", "sec_to_time", "time_to_sec", "upper"), ///< @var array functions used in select
-            'grouping' => array("avg", "count", "count distinct", "group_concat", "max", "min", "sum"), ///< @var array grouping functions used in select
-            'editFunctions' => array( ///< @var array of array("$type|$type2" => "$function/$function2") functions used in editing, [0] - edit and insert, [1] - edit only
-                array(
-                    "char" => "md5/sha1/password/encrypt/uuid",
-                    "binary" => "md5/sha1",
-                    "date|time" => "now",
-                ), array(
-                    $this->db->numberRegex() => "+/-",
-                    "date" => "+ interval/- interval",
-                    "time" => "addtime/subtime",
-                    "char|text" => "concat",
-                )
-            ),
-        );
+        $this->config->unsigned = ["unsigned", "zerofill", "unsigned zerofill"]; ///< @var array number variants
+        $this->config->operators = ["=", "<", ">", "<=", ">=", "!=", "LIKE", "LIKE %%", "REGEXP", "IN", "FIND_IN_SET", "IS NULL", "NOT LIKE", "NOT REGEXP", "NOT IN", "IS NOT NULL", "SQL"]; ///< @var array operators used in select
+        $this->config->functions = ["char_length", "date", "from_unixtime", "lower", "round", "floor", "ceil", "sec_to_time", "time_to_sec", "upper"]; ///< @var array functions used in select
+        $this->config->grouping = ["avg", "count", "count distinct", "group_concat", "max", "min", "sum"]; ///< @var array grouping functions used in select];
+        $this->config->editFunctions = [[
+            "char" => "md5/sha1/password/encrypt/uuid",
+            "binary" => "md5/sha1",
+            "date|time" => "now",
+        ],[
+            $this->db->numberRegex() => "+/-",
+            "date" => "+ interval/- interval",
+            "time" => "addtime/subtime",
+            "char|text" => "concat",
+        ]];
     }
 }
