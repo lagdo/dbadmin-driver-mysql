@@ -5,6 +5,7 @@ namespace Lagdo\DbAdmin\Driver\MySql;
 use Lagdo\DbAdmin\Driver\Db\Server as AbstractServer;
 use Lagdo\DbAdmin\Driver\Entity\TableField;
 use Lagdo\DbAdmin\Driver\Entity\Table;
+use Lagdo\DbAdmin\Driver\Entity\Index;
 
 class Server extends AbstractServer
 {
@@ -277,15 +278,21 @@ class Server extends AbstractServer
      */
     public function indexes($table, $connection = null)
     {
-        $return = [];
+        $indexes = [];
         foreach ($this->db->rows("SHOW INDEX FROM " . $this->table($table), $connection) as $row) {
+            $index = new Index();
+
             $name = $row["Key_name"];
-            $return[$name]["type"] = ($name == "PRIMARY" ? "PRIMARY" : ($row["Index_type"] == "FULLTEXT" ? "FULLTEXT" : ($row["Non_unique"] ? ($row["Index_type"] == "SPATIAL" ? "SPATIAL" : "INDEX") : "UNIQUE")));
-            $return[$name]["columns"][] = $row["Column_name"];
-            $return[$name]["lengths"][] = ($row["Index_type"] == "SPATIAL" ? null : $row["Sub_part"]);
-            $return[$name]["descs"][] = null;
+            $index->type = ($name == "PRIMARY" ? "PRIMARY" :
+                ($row["Index_type"] == "FULLTEXT" ? "FULLTEXT" : ($row["Non_unique"] ?
+                ($row["Index_type"] == "SPATIAL" ? "SPATIAL" : "INDEX") : "UNIQUE")));
+            $index->columns[] = $row["Column_name"];
+            $index->lengths[] = ($row["Index_type"] == "SPATIAL" ? null : $row["Sub_part"]);
+            $index->descs[] = null;
+
+            $indexes[$name] = $index;
         }
-        return $return;
+        return $indexes;
     }
 
     /**
@@ -447,11 +454,11 @@ class Server extends AbstractServer
         $autoIncrementField = $query->getAutoIncrementField();
         if ($table != "" && $autoIncrementField) {
             foreach ($this->indexes($table) as $index) {
-                if (in_array($fields[$autoIncrementField]["orig"], $index["columns"], true)) {
+                if (in_array($fields[$autoIncrementField]["orig"], $index->columns, true)) {
                     $autoIncrementIndex = "";
                     break;
                 }
-                if ($index["type"] == "PRIMARY") {
+                if ($index->type == "PRIMARY") {
                     $autoIncrementIndex = " UNIQUE";
                 }
             }
