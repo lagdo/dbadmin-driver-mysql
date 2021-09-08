@@ -152,7 +152,7 @@ class Server extends AbstractServer
 
     /**
      * Get tables list
-     * @return array array($name => $type)
+     * @return array
      */
     public function tables()
     {
@@ -166,7 +166,7 @@ class Server extends AbstractServer
     /**
      * Count tables in all databases
      * @param array
-     * @return array array($db => $tables)
+     * @return array
      */
     public function countTables($databases)
     {
@@ -181,7 +181,7 @@ class Server extends AbstractServer
      * Get table status
      * @param string
      * @param bool return only "Name", "Engine" and "Comment" fields
-     * @return array array($name => array("Name" => , "Engine" => , "Comment" => , "Oid" => , "Rows" => , "Collation" => , "Auto_increment" => , "Data_length" => , "Index_length" => , "Data_free" => )) or only inner array with $name
+     * @return array
      */
     public function tableStatus($name = "", $fast = false)
     {
@@ -272,7 +272,7 @@ class Server extends AbstractServer
      * Get table indexes
      * @param string
      * @param string ConnectionInterface to use
-     * @return array array($key_name => array("type" => , "columns" => [], "lengths" => [], "descs" => []))
+     * @return array
      */
     public function indexes($table, $connection = null)
     {
@@ -290,7 +290,7 @@ class Server extends AbstractServer
     /**
      * Get foreign keys in table
      * @param string
-     * @return array array($name => array("db" => , "ns" => , "table" => , "source" => [], "target" => [], "onDelete" => , "onUpdate" => ))
+     * @return array
      */
     public function foreignKeys($table)
     {
@@ -312,7 +312,7 @@ class Server extends AbstractServer
 
                 preg_match_all("~$pattern~", $match2, $source);
                 preg_match_all("~$pattern~", $match5, $target);
-                $return[$this->unescapeId($match1)] = array(
+                $return[$this->unescapeId($match1)] = [
                     "db" => $this->unescapeId($match4 != "" ? $match3 : $match4),
                     "table" => $this->unescapeId($match4 != "" ? $match4 : $match3),
                     "source" => array_map(function ($idf) {
@@ -323,7 +323,7 @@ class Server extends AbstractServer
                     }, $target[0]),
                     "onDelete" => ($matchCount > 6 ? $match[6] : "RESTRICT"),
                     "onUpdate" => ($matchCount > 7 ? $match[7] : "RESTRICT"),
-                );
+                ];
             }
         }
         return $return;
@@ -332,12 +332,14 @@ class Server extends AbstractServer
     /**
      * Get view SELECT
      * @param string
-     * @return array array("select" => )
+     * @return array
      */
     public function view($name)
     {
-        return array("select" => preg_replace('~^(?:[^`]|`[^`]*`)*\s+AS\s+~isU', '',
-            $this->connection->result("SHOW CREATE VIEW " . $this->table($name), 1)));
+        return [
+            "select" => preg_replace('~^(?:[^`]|`[^`]*`)*\s+AS\s+~isU', '',
+                $this->connection->result("SHOW CREATE VIEW " . $this->table($name), 1)),
+        ];
     }
 
     /**
@@ -425,7 +427,7 @@ class Server extends AbstractServer
                 }
             }
             $return = (!$tables && !$views) || $this->moveTables($tables, $views, $name);
-            $this->dropDatabases($return ? array($this->selectedDatabase()) : []);
+            $this->dropDatabases($return ? [$this->selectedDatabase()] : []);
         }
         return $return;
     }
@@ -460,7 +462,7 @@ class Server extends AbstractServer
      * Run commands to create or alter table
      * @param string $table "" to create
      * @param string $name new name
-     * @param array $fields of array($orig, $process_field, $after)
+     * @param array $fields of [$orig, $process_field, $after]
      * @param array $foreign of strings
      * @param string $comment
      * @param string $engine
@@ -500,7 +502,7 @@ class Server extends AbstractServer
     /**
      * Run commands to alter indexes
      * @param string escaped table name
-     * @param array of array("index type", "name", array("column definition", ...)) or array("index type", "name", "DROP")
+     * @param array of ["index type", "name", ["column definition", ...]] or ["index type", "name", "DROP"]
      * @return bool
      */
     public function alterIndexes($table, $alter)
@@ -620,7 +622,7 @@ class Server extends AbstractServer
     /**
      * Get information about trigger
      * @param string trigger name
-     * @return array array("Trigger" => , "Timing" => , "Event" => , "Of" => , "Type" => , "Statement" => )
+     * @return array
      */
     public function trigger($name)
     {
@@ -634,13 +636,13 @@ class Server extends AbstractServer
     /**
      * Get defined triggers
      * @param string
-     * @return array array($name => array($timing, $event))
+     * @return array
      */
     public function triggers($table)
     {
         $return = [];
         foreach ($this->db->rows("SHOW TRIGGERS LIKE " . $this->quote(addcslashes($table, "%_\\"))) as $row) {
-            $return[$row["Trigger"]] = array($row["Timing"], $row["Event"]);
+            $return[$row["Trigger"]] = [$row["Timing"], $row["Event"]];
         }
         return $return;
     }
@@ -651,22 +653,22 @@ class Server extends AbstractServer
      */
     public function triggerOptions()
     {
-        return array(
-            "Timing" => array("BEFORE", "AFTER"),
-            "Event" => array("INSERT", "UPDATE", "DELETE"),
-            "Type" => array("FOR EACH ROW"),
-        );
+        return [
+            "Timing" => ["BEFORE", "AFTER"],
+            "Event" => ["INSERT", "UPDATE", "DELETE"],
+            "Type" => ["FOR EACH ROW"],
+        ];
     }
 
     /**
      * Get information about stored routine
      * @param string
      * @param string "FUNCTION" or "PROCEDURE"
-     * @return array ("fields" => array("field" => , "type" => , "length" => , "unsigned" => , "inout" => , "collation" => ), "returns" => , "definition" => , "language" => )
+     * @return array ("fields" => ["field" => , "type" => , "length" => , "unsigned" => , "inout" => , "collation" => ), "returns" => , "definition" => , "language" => )
      */
     public function routine($name, $type)
     {
-        $aliases = array("bool", "boolean", "integer", "double precision", "real", "dec", "numeric", "fixed", "national char", "national varchar");
+        $aliases = ["bool", "boolean", "integer", "double precision", "real", "dec", "numeric", "fixed", "national char", "national varchar"];
         $space = "(?:\\s|/\\*[\s\S]*?\\*/|(?:#|-- )[^\n]*\n?|--\r?\n)";
         $type_pattern = "((" . implode("|", array_merge(array_keys($this->types), $aliases)) . ")\\b(?:\\s*\\(((?:[^'\")]|$this->enumLength)++)\\))?\\s*(zerofill\\s*)?(unsigned(?:\\s+zerofill)?)?)(?:\\s*(?:CHARSET|CHARACTER\\s+SET)\\s*['\"]?([^'\"\\s,]+)['\"]?)?";
         $pattern = "$space*(" . ($type == "FUNCTION" ? "" : $this->inout) . ")?\\s*(?:`((?:[^`]|``)*)`\\s*|\\b(\\S+)\\s+)$type_pattern";
@@ -675,7 +677,7 @@ class Server extends AbstractServer
         $fields = [];
         preg_match_all("~$pattern\\s*,?~is", $match[1], $matches, PREG_SET_ORDER);
         foreach ($matches as $param) {
-            $fields[] = array(
+            $fields[] = [
                 "field" => str_replace("``", "`", $param[2]) . $param[3],
                 "type" => strtolower($param[5]),
                 "length" => preg_replace_callback("~$this->enumLength~s", 'normalize_enum', $param[6]),
@@ -684,17 +686,17 @@ class Server extends AbstractServer
                 "full_type" => $param[4],
                 "inout" => strtoupper($param[1]),
                 "collation" => strtolower($param[9]),
-            );
+            ];
         }
         if ($type != "FUNCTION") {
-            return array("fields" => $fields, "definition" => $match[11]);
+            return ["fields" => $fields, "definition" => $match[11]];
         }
-        return array(
+        return [
             "fields" => $fields,
-            "returns" => array("type" => $match[12], "length" => $match[13], "unsigned" => $match[15], "collation" => $match[16]),
+            "returns" => ["type" => $match[12], "length" => $match[13], "unsigned" => $match[15], "collation" => $match[16]],
             "definition" => $match[17],
             "language" => "SQL", // available in information_schema.ROUTINES.PARAMETER_STYLE
-        );
+        ];
     }
 
     /**
@@ -906,23 +908,31 @@ class Server extends AbstractServer
     }
 
     /**
-     * Get driver config
-     * @return array array('drivers' => , 'jush' => , 'types' => , 'structuredTypes' => , 'unsigned' => , 'operators' => , 'functions' => , 'grouping' => , 'editFunctions' => )
+     * @inheritDoc
      */
     protected function setConfig()
     {
         $this->config->jush = 'sql';
         $this->config->drivers = ["MySQLi", "PDO_MySQL"];
-        foreach (array(
-            $this->util->lang('Numbers') => array("tinyint" => 3, "smallint" => 5, "mediumint" => 8, "int" => 10, "bigint" => 20, "decimal" => 66, "float" => 12, "double" => 21),
-            $this->util->lang('Date and time') => array("date" => 10, "datetime" => 19, "timestamp" => 19, "time" => 10, "year" => 4),
-            $this->util->lang('Strings') => array("char" => 255, "varchar" => 65535, "tinytext" => 255, "text" => 65535, "mediumtext" => 16777215, "longtext" => 4294967295),
-            $this->util->lang('Lists') => array("enum" => 65535, "set" => 64),
-            $this->util->lang('Binary') => array("bit" => 20, "binary" => 255, "varbinary" => 65535, "tinyblob" => 255, "blob" => 65535, "mediumblob" => 16777215, "longblob" => 4294967295),
-            $this->util->lang('Geometry') => array("geometry" => 0, "point" => 0, "linestring" => 0, "polygon" => 0, "multipoint" => 0, "multilinestring" => 0, "multipolygon" => 0, "geometrycollection" => 0),
-        ) as $key => $val) {
-            $this->config->types += $val;
-            $this->config->structuredTypes[$key] = array_keys($val);
+
+        $groups = [
+            $this->util->lang('Numbers'),
+            $this->util->lang('Date and time'),
+            $this->util->lang('Strings'),
+            $this->util->lang('Lists'),
+            $this->util->lang('Binary'),
+            $this->util->lang('Geometry'),
+        ];
+        $this->config->types = [
+            ["tinyint" => 3, "smallint" => 5, "mediumint" => 8, "int" => 10, "bigint" => 20, "decimal" => 66, "float" => 12, "double" => 21],
+            ["date" => 10, "datetime" => 19, "timestamp" => 19, "time" => 10, "year" => 4],
+            ["char" => 255, "varchar" => 65535, "tinytext" => 255, "text" => 65535, "mediumtext" => 16777215, "longtext" => 4294967295],
+            ["enum" => 65535, "set" => 64],
+            ["bit" => 20, "binary" => 255, "varbinary" => 65535, "tinyblob" => 255, "blob" => 65535, "mediumblob" => 16777215, "longblob" => 4294967295],
+            ["geometry" => 0, "point" => 0, "linestring" => 0, "polygon" => 0, "multipoint" => 0, "multilinestring" => 0, "multipolygon" => 0, "geometrycollection" => 0],
+        ];
+        foreach ($groups as $key => $group) {
+            $this->config->structuredTypes[$group] = array_keys($this->config->types[$key]);
         }
         $this->config->unsigned = ["unsigned", "zerofill", "unsigned zerofill"]; ///< @var array number variants
         $this->config->operators = ["=", "<", ">", "<=", ">=", "!=", "LIKE", "LIKE %%", "REGEXP", "IN", "FIND_IN_SET", "IS NULL", "NOT LIKE", "NOT REGEXP", "NOT IN", "IS NOT NULL", "SQL"]; ///< @var array operators used in select
