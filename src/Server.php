@@ -6,6 +6,7 @@ use Lagdo\DbAdmin\Driver\Db\Server as AbstractServer;
 use Lagdo\DbAdmin\Driver\Entity\TableField;
 use Lagdo\DbAdmin\Driver\Entity\Table;
 use Lagdo\DbAdmin\Driver\Entity\Index;
+use Lagdo\DbAdmin\Driver\Entity\ForeignKey;
 
 class Server extends AbstractServer
 {
@@ -303,7 +304,7 @@ class Server extends AbstractServer
     public function foreignKeys($table)
     {
         static $pattern = '(?:`(?:[^`]|``)+`|"(?:[^"]|"")+")';
-        $return = [];
+        $foreignKeys = [];
         $create_table = $this->connection->result("SHOW CREATE TABLE " . $this->table($table), 1);
         if ($create_table) {
             preg_match_all("~CONSTRAINT ($pattern) FOREIGN KEY ?\\(((?:$pattern,? ?)+)\\) REFERENCES " .
@@ -320,21 +321,24 @@ class Server extends AbstractServer
 
                 preg_match_all("~$pattern~", $match2, $source);
                 preg_match_all("~$pattern~", $match5, $target);
-                $return[$this->unescapeId($match1)] = [
-                    "db" => $this->unescapeId($match4 != "" ? $match3 : $match4),
-                    "table" => $this->unescapeId($match4 != "" ? $match4 : $match3),
-                    "source" => array_map(function ($idf) {
-                        return $this->unescapeId($idf);
-                    }, $source[0]),
-                    "target" => array_map(function ($idf) {
-                        return $this->unescapeId($idf);
-                    }, $target[0]),
-                    "onDelete" => ($matchCount > 6 ? $match[6] : "RESTRICT"),
-                    "onUpdate" => ($matchCount > 7 ? $match[7] : "RESTRICT"),
-                ];
+
+                $foreignKey = new ForeignKey();
+
+                $foreignKey->db = $this->unescapeId($match4 != "" ? $match3 : $match4);
+                $foreignKey->table = $this->unescapeId($match4 != "" ? $match4 : $match3);
+                $foreignKey->source = array_map(function ($idf) {
+                    return $this->unescapeId($idf);
+                }, $source[0]);
+                $foreignKey->target = array_map(function ($idf) {
+                    return $this->unescapeId($idf);
+                }, $target[0]);
+                $foreignKey->onDelete = $matchCount > 6 ? $match[6] : "RESTRICT";
+                $foreignKey->onUpdate = $matchCount > 7 ? $match[7] : "RESTRICT";
+
+                $foreignKeys[$this->unescapeId($match1)] = $foreignKey;
             }
         }
-        return $return;
+        return $foreignKeys;
     }
 
     /**
