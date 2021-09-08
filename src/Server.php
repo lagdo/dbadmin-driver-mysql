@@ -99,6 +99,19 @@ class Server extends AbstractServer
     }
 
     /**
+     * @inheritDoc
+     */
+    public function databaseSize($database)
+    {
+        $statement = $this->connection->query("SELECT SUM(data_length + index_length) " .
+            "FROM information_schema.tables where table_schema=" . $this->quote($database));
+        if (is_object($statement) && ($row = $statement->fetchRow())) {
+            return intval($row[0]);
+        }
+        return 0;
+    }
+
+    /**
      * Formulate SQL query with limit
      * @param string everything after SELECT
      * @param string including WHERE
@@ -175,11 +188,11 @@ class Server extends AbstractServer
      */
     public function countTables($databases)
     {
-        $return = [];
-        foreach ($databases as $db) {
-            $return[$db] = count($this->db->values("SHOW TABLES IN " . $this->escapeId($db)));
+        $counts = [];
+        foreach ($databases as $database) {
+            $counts[$database] = count($this->db->values("SHOW TABLES IN " . $this->escapeId($database)));
         }
-        return $return;
+        return $counts;
     }
 
     /**
