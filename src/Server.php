@@ -7,6 +7,8 @@ use Lagdo\DbAdmin\Driver\Entity\TableField;
 use Lagdo\DbAdmin\Driver\Entity\Table;
 use Lagdo\DbAdmin\Driver\Entity\Index;
 use Lagdo\DbAdmin\Driver\Entity\ForeignKey;
+use Lagdo\DbAdmin\Driver\Entity\Trigger;
+use Lagdo\DbAdmin\Driver\Entity\Routine;
 
 class Server extends AbstractServer
 {
@@ -652,11 +654,11 @@ class Server extends AbstractServer
      */
     public function triggers($table)
     {
-        $return = [];
+        $triggers = [];
         foreach ($this->db->rows("SHOW TRIGGERS LIKE " . $this->quote(addcslashes($table, "%_\\"))) as $row) {
-            $return[$row["Trigger"]] = [$row["Timing"], $row["Event"]];
+            $triggers[$row["Trigger"]] = new Trigger($row["Timing"], $row["Event"]);
         }
-        return $return;
+        return $triggers;
     }
 
     /**
@@ -673,10 +675,7 @@ class Server extends AbstractServer
     }
 
     /**
-     * Get information about stored routine
-     * @param string
-     * @param string "FUNCTION" or "PROCEDURE"
-     * @return array ("fields" => ["field" => , "type" => , "length" => , "unsigned" => , "inout" => , "collation" => ), "returns" => , "definition" => , "language" => )
+     * @inheritDoc
      */
     public function routine($name, $type)
     {
@@ -712,12 +711,15 @@ class Server extends AbstractServer
     }
 
     /**
-     * Get list of routines
-     * @return array ("SPECIFIC_NAME" => , "ROUTINE_NAME" => , "ROUTINE_TYPE" => , "DTD_IDENTIFIER" => )
+     * @inheritDoc
      */
     public function routines()
     {
-        return $this->db->rows("SELECT ROUTINE_NAME AS SPECIFIC_NAME, ROUTINE_NAME, ROUTINE_TYPE, DTD_IDENTIFIER FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = " . $this->quote($this->selectedDatabase()));
+        $rows = $this->db->rows("SELECT ROUTINE_NAME, ROUTINE_TYPE, DTD_IDENTIFIER " .
+            "FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = " . $this->quote($this->selectedDatabase()));
+        return array_map(function($row) {
+            return new Routine($row['ROUTINE_NAME'], $row['ROUTINE_NAME'], $row['ROUTINE_TYPE'], $row['DTD_IDENTIFIER']);
+        }, $rows);
     }
 
     /**
@@ -927,25 +929,19 @@ class Server extends AbstractServer
         $this->config->jush = 'sql';
         $this->config->drivers = ["MySQLi", "PDO_MySQL"];
 
-        $groups = [
-            $this->util->lang('Numbers'),
-            $this->util->lang('Date and time'),
-            $this->util->lang('Strings'),
-            $this->util->lang('Lists'),
-            $this->util->lang('Binary'),
-            $this->util->lang('Geometry'),
+        $types = [
+            $this->util->lang('Numbers') => ["tinyint" => 3, "smallint" => 5, "mediumint" => 8, "int" => 10, "bigint" => 20, "decimal" => 66, "float" => 12, "double" => 21],
+            $this->util->lang('Date and time') => ["date" => 10, "datetime" => 19, "timestamp" => 19, "time" => 10, "year" => 4],
+            $this->util->lang('Strings') => ["char" => 255, "varchar" => 65535, "tinytext" => 255, "text" => 65535, "mediumtext" => 16777215, "longtext" => 4294967295],
+            $this->util->lang('Lists') => ["enum" => 65535, "set" => 64],
+            $this->util->lang('Binary') => ["bit" => 20, "binary" => 255, "varbinary" => 65535, "tinyblob" => 255, "blob" => 65535, "mediumblob" => 16777215, "longblob" => 4294967295],
+            $this->util->lang('Geometry') => ["geometry" => 0, "point" => 0, "linestring" => 0, "polygon" => 0, "multipoint" => 0, "multilinestring" => 0, "multipolygon" => 0, "geometrycollection" => 0],
         ];
-        $this->config->types = [
-            ["tinyint" => 3, "smallint" => 5, "mediumint" => 8, "int" => 10, "bigint" => 20, "decimal" => 66, "float" => 12, "double" => 21],
-            ["date" => 10, "datetime" => 19, "timestamp" => 19, "time" => 10, "year" => 4],
-            ["char" => 255, "varchar" => 65535, "tinytext" => 255, "text" => 65535, "mediumtext" => 16777215, "longtext" => 4294967295],
-            ["enum" => 65535, "set" => 64],
-            ["bit" => 20, "binary" => 255, "varbinary" => 65535, "tinyblob" => 255, "blob" => 65535, "mediumblob" => 16777215, "longblob" => 4294967295],
-            ["geometry" => 0, "point" => 0, "linestring" => 0, "polygon" => 0, "multipoint" => 0, "multilinestring" => 0, "multipolygon" => 0, "geometrycollection" => 0],
-        ];
-        foreach ($groups as $key => $group) {
-            $this->config->structuredTypes[$group] = array_keys($this->config->types[$key]);
+        foreach ($types as $group => $_types) {
+            $this->config->structuredTypes[$group] = array_keys($_types);
+            $this->config->types = array_merge($this->config->types, $_types);
         }
+
         $this->config->unsigned = ["unsigned", "zerofill", "unsigned zerofill"]; ///< @var array number variants
         $this->config->operators = ["=", "<", ">", "<=", ">=", "!=", "LIKE", "LIKE %%", "REGEXP", "IN", "FIND_IN_SET", "IS NULL", "NOT LIKE", "NOT REGEXP", "NOT IN", "IS NOT NULL", "SQL"]; ///< @var array operators used in select
         $this->config->functions = ["char_length", "date", "from_unixtime", "lower", "round", "floor", "ceil", "sec_to_time", "time_to_sec", "upper"]; ///< @var array functions used in select
