@@ -55,8 +55,8 @@ class Server extends AbstractServer
         $connection->setCharset($this->charset());
         $connection->query("SET sql_quote_show_create = 1, autocommit = 1");
         if ($this->minVersion('5.7.8', 10.2, $connection)) {
-            $this->structuredTypes[$this->util->lang('Strings')][] = "json";
-            $this->types["json"] = 4294967295;
+            $this->config->structuredTypes[$this->util->lang('Strings')][] = "json";
+            $this->config->types["json"] = 4294967295;
         }
 
         return $connection;
@@ -694,7 +694,7 @@ class Server extends AbstractServer
     {
         $aliases = ["bool", "boolean", "integer", "double precision", "real", "dec", "numeric", "fixed", "national char", "national varchar"];
         $space = "(?:\\s|/\\*[\s\S]*?\\*/|(?:#|-- )[^\n]*\n?|--\r?\n)";
-        $type_pattern = "((" . implode("|", array_merge(array_keys($this->types), $aliases)) . ")\\b(?:\\s*\\(((?:[^'\")]|$this->enumLength)++)\\))?\\s*(zerofill\\s*)?(unsigned(?:\\s+zerofill)?)?)(?:\\s*(?:CHARSET|CHARACTER\\s+SET)\\s*['\"]?([^'\"\\s,]+)['\"]?)?";
+        $type_pattern = "((" . implode("|", array_merge(array_keys($this->config->types), $aliases)) . ")\\b(?:\\s*\\(((?:[^'\")]|$this->enumLength)++)\\))?\\s*(zerofill\\s*)?(unsigned(?:\\s+zerofill)?)?)(?:\\s*(?:CHARSET|CHARACTER\\s+SET)\\s*['\"]?([^'\"\\s,]+)['\"]?)?";
         $pattern = "$space*(" . ($type == "FUNCTION" ? "" : $this->inout) . ")?\\s*(?:`((?:[^`]|``)*)`\\s*|\\b(\\S+)\\s+)$type_pattern";
         $create = $this->connection->result("SHOW CREATE $type " . $this->escapeId($name), 2);
         preg_match("~\\(((?:$pattern\\s*,?)*)\\)\\s*" . ($type == "FUNCTION" ? "RETURNS\\s+$type_pattern\\s+" : "") . "(.*)~is", $create, $match);
