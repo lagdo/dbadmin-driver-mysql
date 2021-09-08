@@ -4,6 +4,7 @@ namespace Lagdo\DbAdmin\Driver\MySql;
 
 use Lagdo\DbAdmin\Driver\Db\Server as AbstractServer;
 use Lagdo\DbAdmin\Driver\Entity\TableField;
+use Lagdo\DbAdmin\Driver\Entity\Table;
 
 class Server extends AbstractServer
 {
@@ -178,32 +179,32 @@ class Server extends AbstractServer
     }
 
     /**
-     * Get table status
-     * @param string
-     * @param bool return only "Name", "Engine" and "Comment" fields
-     * @return array
+     * @inheritDoc
      */
     public function tableStatus($name = "", $fast = false)
     {
-        $return = [];
+        $tables = [];
         foreach ($this->db->rows($fast && $this->minVersion(5) ?
             "SELECT TABLE_NAME AS Name, ENGINE AS Engine, TABLE_COMMENT AS Comment FROM information_schema.TABLES " .
             "WHERE TABLE_SCHEMA = DATABASE() " . ($name != "" ? "AND TABLE_NAME = " . $this->quote($name) : "ORDER BY Name") :
             "SHOW TABLE STATUS" . ($name != "" ? " LIKE " . $this->quote(addcslashes($name, "%_\\")) : "")
         ) as $row) {
+            $status = new Table($row['Name']);
+            $status->engine = $row['Engine'];
             if ($row["Engine"] == "InnoDB") {
                 // ignore internal comment, unnecessary since MySQL 5.1.21
-                $row["Comment"] = preg_replace('~(?:(.+); )?InnoDB free: .*~', '\1', $row["Comment"]);
+                $status->comment = preg_replace('~(?:(.+); )?InnoDB free: .*~', '\1', $row["Comment"]);
             }
-            if (!isset($row["Engine"])) {
-                $row["Comment"] = "";
-            }
+            // if (!isset($row["Engine"])) {
+            //     $row["Comment"] = "";
+            // }
+
             if ($name != "") {
-                return $row;
+                return $status;
             }
-            $return[$row["Name"]] = $row;
+            $tables[$row["Name"]] = $status;
         }
-        return $return;
+        return $tables;
     }
 
     /**
@@ -213,7 +214,7 @@ class Server extends AbstractServer
      */
     public function isView($tableStatus)
     {
-        return $tableStatus["Engine"] === null;
+        return $tableStatus->engine === null;
     }
 
     /**
@@ -223,8 +224,8 @@ class Server extends AbstractServer
      */
     public function supportForeignKeys($tableStatus)
     {
-        return preg_match('~InnoDB|IBMDB2I~i', $tableStatus["Engine"])
-            || (preg_match('~NDB~i', $tableStatus["Engine"]) && $this->minVersion(5.6));
+        return preg_match('~InnoDB|IBMDB2I~i', $tableStatus->engine)
+            || (preg_match('~NDB~i', $tableStatus->engine) && $this->minVersion(5.6));
     }
 
     /**
@@ -756,7 +757,7 @@ class Server extends AbstractServer
      */
     public function countRows($tableStatus, $where)
     {
-        return ($where || $tableStatus["Engine"] != "InnoDB" ? null : $tableStatus["Rows"]);
+        return ($where || $tableStatus->engine != "InnoDB" ? null : $tableStatus->rows);
     }
 
     /**
