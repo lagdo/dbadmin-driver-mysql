@@ -3,7 +3,7 @@
 namespace Lagdo\DbAdmin\Driver\MySql\MySqli;
 
 use Lagdo\DbAdmin\Driver\Db\StatementInterface;
-use Lagdo\DbAdmin\Driver\Entity\StatementField;
+use Lagdo\DbAdmin\Driver\Entity\StatementFieldEntity;
 
 use mysqli_result;
 
@@ -60,7 +60,7 @@ class Statement implements StatementInterface
         if (!$this->result || !($field = $this->result->fetch_field())) {
             return null;
         }
-        return new StatementField($field->type, $field->type === 63, // 63 - binary
+        return new StatementFieldEntity($field->type, $field->type === 63, // 63 - binary
             $field->name, $field->orgname, $field->table, $field->orgtable);
     }
 

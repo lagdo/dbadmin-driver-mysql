@@ -3,12 +3,12 @@
 namespace Lagdo\DbAdmin\Driver\MySql;
 
 use Lagdo\DbAdmin\Driver\Db\Server as AbstractServer;
-use Lagdo\DbAdmin\Driver\Entity\TableField;
-use Lagdo\DbAdmin\Driver\Entity\Table;
-use Lagdo\DbAdmin\Driver\Entity\Index;
-use Lagdo\DbAdmin\Driver\Entity\ForeignKey;
-use Lagdo\DbAdmin\Driver\Entity\Trigger;
-use Lagdo\DbAdmin\Driver\Entity\Routine;
+use Lagdo\DbAdmin\Driver\Entity\TableFieldEntity;
+use Lagdo\DbAdmin\Driver\Entity\TableEntity;
+use Lagdo\DbAdmin\Driver\Entity\IndexEntity;
+use Lagdo\DbAdmin\Driver\Entity\ForeignKeyEntity;
+use Lagdo\DbAdmin\Driver\Entity\TriggerEntity;
+use Lagdo\DbAdmin\Driver\Entity\RoutineEntity;
 
 class Server extends AbstractServer
 {
@@ -206,7 +206,7 @@ class Server extends AbstractServer
             "WHERE TABLE_SCHEMA = DATABASE() " . ($name != "" ? "AND TABLE_NAME = " . $this->quote($name) : "ORDER BY Name") :
             "SHOW TABLE STATUS" . ($name != "" ? " LIKE " . $this->quote(addcslashes($name, "%_\\")) : "")
         ) as $row) {
-            $status = new Table($row['Name']);
+            $status = new TableEntity($row['Name']);
             $status->engine = $row['Engine'];
             if ($row["Engine"] == "InnoDB") {
                 // ignore internal comment, unnecessary since MySQL 5.1.21
@@ -261,7 +261,7 @@ class Server extends AbstractServer
             $match3 = $matchCount > 3 ? $match[3] : '';
             $match4 = $matchCount > 4 ? $match[4] : '';
 
-            $field = new TableField();
+            $field = new TableFieldEntity();
 
             $field->name = $row["Field"];
             $field->fullType = $row["Type"];
@@ -296,7 +296,7 @@ class Server extends AbstractServer
     {
         $indexes = [];
         foreach ($this->db->rows("SHOW INDEX FROM " . $this->table($table), $connection) as $row) {
-            $index = new Index();
+            $index = new IndexEntity();
 
             $name = $row["Key_name"];
             $index->type = ($name == "PRIMARY" ? "PRIMARY" :
@@ -337,7 +337,7 @@ class Server extends AbstractServer
                 preg_match_all("~$pattern~", $match2, $source);
                 preg_match_all("~$pattern~", $match5, $target);
 
-                $foreignKey = new ForeignKey();
+                $foreignKey = new ForeignKeyEntity();
 
                 $foreignKey->db = $this->unescapeId($match4 != "" ? $match3 : $match4);
                 $foreignKey->table = $this->unescapeId($match4 != "" ? $match4 : $match3);
@@ -731,7 +731,7 @@ class Server extends AbstractServer
         $rows = $this->db->rows("SELECT ROUTINE_NAME, ROUTINE_TYPE, DTD_IDENTIFIER " .
             "FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = " . $this->quote($this->selectedDatabase()));
         return array_map(function($row) {
-            return new Routine($row['ROUTINE_NAME'], $row['ROUTINE_NAME'], $row['ROUTINE_TYPE'], $row['DTD_IDENTIFIER']);
+            return new RoutineEntity($row['ROUTINE_NAME'], $row['ROUTINE_NAME'], $row['ROUTINE_TYPE'], $row['DTD_IDENTIFIER']);
         }, $rows);
     }
 
