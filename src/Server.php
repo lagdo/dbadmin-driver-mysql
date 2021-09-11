@@ -19,7 +19,7 @@ class Server extends AbstractServer
     public function databases(bool $flush)
     {
         // !!! Caching and slow query handling are temporarily disabled !!!
-        $query = $this->minVersion(5) ?
+        $query = $this->driver->minVersion(5) ?
             "SELECT SCHEMA_NAME FROM information_schema.SCHEMATA ORDER BY SCHEMA_NAME" :
             "SHOW DATABASES";
         return $this->driver->values($query);
@@ -27,7 +27,7 @@ class Server extends AbstractServer
         // SHOW DATABASES can take a very long time so it is cached
         // $databases = get_session("dbs");
         // if ($databases === null) {
-        //     $query = ($this->minVersion(5)
+        //     $query = ($this->driver->minVersion(5)
         //         ? "SELECT SCHEMA_NAME FROM information_schema.SCHEMATA ORDER BY SCHEMA_NAME"
         //         : "SHOW DATABASES"
         //     ); // SHOW DATABASES can be disabled by skip_show_database
@@ -87,7 +87,7 @@ class Server extends AbstractServer
      */
     public function tables()
     {
-        return $this->driver->keyValues($this->minVersion(5) ?
+        return $this->driver->keyValues($this->driver->minVersion(5) ?
             "SELECT TABLE_NAME, TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME" :
             "SHOW TABLES");
     }
@@ -102,6 +102,94 @@ class Server extends AbstractServer
             $counts[$database] = count($this->driver->values("SHOW TABLES IN " . $this->driver->escapeId($database)));
         }
         return $counts;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function dropViews(array $views)
+    {
+        return $this->driver->queries("DROP VIEW " . implode(", ", array_map(function ($view) {
+            return $this->driver->table($view);
+        }, $views)));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function dropTables(array $tables)
+    {
+        return $this->driver->queries("DROP TABLE " . implode(", ", array_map(function ($table) {
+            return $this->driver->table($table);
+        }, $tables)));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function truncateTables(array $tables)
+    {
+        return $this->driver->applyQueries("TRUNCATE TABLE", $tables);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function moveTables(array $tables, array $views, string $target)
+    {
+        $rename = [];
+        foreach ($tables as $table) {
+            $rename[] = $this->driver->table($table) . " TO " . $this->driver->escapeId($target) . "." . $this->driver->table($table);
+        }
+        if (!$rename || $this->driver->queries("RENAME TABLE " . implode(", ", $rename))) {
+            $definitions = [];
+            foreach ($views as $table) {
+                $definitions[$this->driver->table($table)] = $this->driver->view($table);
+            }
+            $this->connection->selectDatabase($target);
+            $database = $this->driver->escapeId($this->driver->selectedDatabase());
+            foreach ($definitions as $name => $view) {
+                if (!$this->driver->queries("CREATE VIEW $name AS " . str_replace(" $database.", " ", $view["select"])) || !$this->driver->queries("DROP VIEW $database.$name")) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        //! move triggers
+        return false;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function copyTables(array $tables, array $views, string $target)
+    {
+        $this->driver->queries("SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO'");
+        $overwrite = $this->util->input()->getOverwrite();
+        foreach ($tables as $table) {
+            $name = ($target == $this->driver->selectedDatabase() ? $this->driver->table("copy_$table") : $this->driver->escapeId($target) . "." . $this->driver->table($table));
+            if (($overwrite && !$this->driver->queries("\nDROP TABLE IF EXISTS $name"))
+                || !$this->driver->queries("CREATE TABLE $name LIKE " . $this->driver->table($table))
+                || !$this->driver->queries("INSERT INTO $name SELECT * FROM " . $this->driver->table($table))
+            ) {
+                return false;
+            }
+            foreach ($this->driver->rows("SHOW TRIGGERS LIKE " . $this->driver->quote(addcslashes($table, "%_\\"))) as $row) {
+                $trigger = $row["Trigger"];
+                if (!$this->driver->queries("CREATE TRIGGER " . ($target == $this->driver->selectedDatabase() ? $this->driver->escapeId("copy_$trigger") : $this->driver->escapeId($target) . "." . $this->driver->escapeId($trigger)) . " $row[Timing] $row[Event] ON $name FOR EACH ROW\n$row[Statement];")) {
+                    return false;
+                }
+            }
+        }
+        foreach ($views as $table) {
+            $name = ($target == $this->driver->selectedDatabase() ? $this->driver->table("copy_$table") : $this->driver->escapeId($target) . "." . $this->driver->table($table));
+            $view = $this->driver->view($table);
+            if (($overwrite && !$this->driver->queries("DROP VIEW IF EXISTS $name"))
+                || !$this->driver->queries("CREATE VIEW $name AS $view[select]")) { //! USE to avoid db.table
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -129,8 +217,8 @@ class Server extends AbstractServer
      */
     public function isInformationSchema(string $database)
     {
-        return ($this->minVersion(5) && $database == "information_schema")
-            || ($this->minVersion(5.5) && $database == "performance_schema");
+        return ($this->driver->minVersion(5) && $database == "information_schema")
+            || ($this->driver->minVersion(5.5) && $database == "performance_schema");
     }
 
     /**
