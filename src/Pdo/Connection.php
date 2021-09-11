@@ -14,13 +14,13 @@ class Connection extends PdoConnection
     /**
      * @inheritDoc
      */
-    public function open($server, array $options)
+    public function open(string $server, array $options)
     {
         $username = $options['username'];
         $password = $options['password'];
 
         $options = array(PDO::MYSQL_ATTR_LOCAL_INFILE => false);
-        $ssl = $this->db->options('');
+        $ssl = $this->driver->options('');
         if ($ssl) {
             if (!empty($ssl['key'])) {
                 $options[PDO::MYSQL_ATTR_SSL_KEY] = $ssl['key'];
@@ -38,18 +38,27 @@ class Connection extends PdoConnection
         return true;
     }
 
-    public function setCharset($charset)
+    /**
+     * @inheritDoc
+     */
+    public function setCharset(string $charset)
     {
         $this->query("SET NAMES $charset"); // charset in DSN is ignored before PHP 5.3.6
     }
 
-    public function selectDatabase($database)
+    /**
+     * @inheritDoc
+     */
+    public function selectDatabase(string $database)
     {
         // database selection is separated from the connection so dbname in DSN can't be used
         return $this->query("USE " . $this->server->escapeId($database));
     }
 
-    public function query($query, $unbuffered = false)
+    /**
+     * @inheritDoc
+     */
+    public function query(string $query, bool $unbuffered = false)
     {
         $this->client->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, !$unbuffered);
         return parent::query($query, $unbuffered);

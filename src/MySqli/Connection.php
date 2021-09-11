@@ -14,7 +14,7 @@ class Connection extends AbstractConnection
     /**
     * @inheritDoc
     */
-    public function open($server, array $options)
+    public function open(string $server, array $options)
     {
         $username = $options['username'];
         $password = $options['password'];
@@ -28,7 +28,7 @@ class Connection extends AbstractConnection
 
         mysqli_report(MYSQLI_REPORT_OFF); // stays between requests, not required since PHP 5.3.4
         list($host, $port) = explode(":", $server, 2); // part after : is used for port or socket
-        $ssl = $this->db->options('ssl');
+        $ssl = $this->driver->options('ssl');
         if ($ssl) {
             $this->client->ssl_set($ssl['key'], $ssl['cert'], $ssl['ca'], '', '');
         }
@@ -57,7 +57,7 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    public function selectDatabase($database)
+    public function selectDatabase(string $database)
     {
         return $this->client->select_db($database);
     }
@@ -65,7 +65,7 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    public function setCharset($charset)
+    public function setCharset(string $charset)
     {
         if ($this->client->set_charset($charset)) {
             return true;
@@ -78,7 +78,7 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    public function query($query, $unbuffered = false)
+    public function query(string $query, bool $unbuffered = false)
     {
         $result = $this->client->query($query, $unbuffered);
         return ($result) ? new Statement($result) : null;
@@ -87,7 +87,7 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    public function result($query, $field = 0)
+    public function result(string $query, int $field = 0)
     {
         $result = $this->client->query($query);
         if (!$result) {
@@ -100,7 +100,7 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    public function quote($string)
+    public function quote(string $string)
     {
         return "'" . $this->client->escape_string($string) . "'";
     }
@@ -116,7 +116,7 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    public function multiQuery($query)
+    public function multiQuery(string $query)
     {
         return $this->client->multi_query($query);
     }
