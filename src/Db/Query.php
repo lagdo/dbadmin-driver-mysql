@@ -1,6 +1,6 @@
 <?php
 
-namespace Lagdo\DbAdmin\Driver\MySql;
+namespace Lagdo\DbAdmin\Driver\MySql\Db;
 
 use Lagdo\DbAdmin\Driver\Db\ConnectionInterface;
 

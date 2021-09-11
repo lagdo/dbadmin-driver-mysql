@@ -28,10 +28,10 @@ class Driver extends AbstractDriver
     {
         $connection = null;
         if (extension_loaded("mysqli")) {
-            $connection = new MySqli\Connection($this, $this->util, 'MySQLi');
+            $connection = new Db\MySqli\Connection($this, $this->util, 'MySQLi');
         }
         elseif (extension_loaded("pdo_mysql")) {
-            $connection = new Pdo\Connection($this, $this->util, 'PDO_MySQL');
+            $connection = new Db\Pdo\Connection($this, $this->util, 'PDO_MySQL');
         }
         else {
             throw new AuthException($this->util->lang('No package installed to connect to a MySQL server.'));
@@ -39,10 +39,10 @@ class Driver extends AbstractDriver
 
         if ($this->connection === null) {
             $this->connection = $connection;
-            $this->server = new Server($this, $this->util, $connection);
-            $this->table = new Table($this, $this->util, $connection);
-            $this->query = new Query($this, $this->util, $connection);
-            $this->grammar = new Grammar($this, $this->util, $connection);
+            $this->server = new Db\Server($this, $this->util, $connection);
+            $this->table = new Db\Table($this, $this->util, $connection);
+            $this->query = new Db\Query($this, $this->util, $connection);
+            $this->grammar = new Db\Grammar($this, $this->util, $connection);
         }
 
         if (!$connection->open($this->options('server'), $this->options())) {

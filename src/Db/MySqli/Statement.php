@@ -1,6 +1,6 @@
 <?php
 
-namespace Lagdo\DbAdmin\Driver\MySql\MySqli;
+namespace Lagdo\DbAdmin\Driver\MySql\Db\MySqli;
 
 use Lagdo\DbAdmin\Driver\Db\StatementInterface;
 use Lagdo\DbAdmin\Driver\Entity\StatementFieldEntity;
