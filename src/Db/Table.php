@@ -6,8 +6,6 @@ use Lagdo\DbAdmin\Driver\Entity\TableFieldEntity;
 use Lagdo\DbAdmin\Driver\Entity\TableEntity;
 use Lagdo\DbAdmin\Driver\Entity\IndexEntity;
 use Lagdo\DbAdmin\Driver\Entity\ForeignKeyEntity;
-use Lagdo\DbAdmin\Driver\Entity\TriggerEntity;
-use Lagdo\DbAdmin\Driver\Entity\RoutineEntity;
 
 use Lagdo\DbAdmin\Driver\Db\ConnectionInterface;
 
@@ -254,10 +252,10 @@ class Table extends AbstractTable
     public function tableHelp(string $name)
     {
         $maria = preg_match('~MariaDB~', $this->connection->serverInfo());
-        if ($this->driver->isInformationSchema($this->driver->selectedDatabase())) {
+        if ($this->driver->isInformationSchema($this->driver->database())) {
             return strtolower(($maria ? "information-schema-$name-table/" : str_replace("_", "-", $name) . "-table.html"));
         }
-        if ($this->driver->selectedDatabase() == "mysql") {
+        if ($this->driver->database() == "mysql") {
             return ($maria ? "mysql$name-table/" : "system-database.html"); //! more precise link
         }
     }

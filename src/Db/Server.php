@@ -2,11 +2,6 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Db;
 
-use Lagdo\DbAdmin\Driver\Entity\TableFieldEntity;
-use Lagdo\DbAdmin\Driver\Entity\TableEntity;
-use Lagdo\DbAdmin\Driver\Entity\IndexEntity;
-use Lagdo\DbAdmin\Driver\Entity\ForeignKeyEntity;
-use Lagdo\DbAdmin\Driver\Entity\TriggerEntity;
 use Lagdo\DbAdmin\Driver\Entity\RoutineEntity;
 
 use Lagdo\DbAdmin\Driver\Db\Server as AbstractServer;
@@ -147,7 +142,7 @@ class Server extends AbstractServer
                 $definitions[$this->driver->table($table)] = $this->driver->view($table);
             }
             $this->connection->selectDatabase($target);
-            $database = $this->driver->escapeId($this->driver->selectedDatabase());
+            $database = $this->driver->escapeId($this->driver->database());
             foreach ($definitions as $name => $view) {
                 if (!$this->driver->queries("CREATE VIEW $name AS " . str_replace(" $database.", " ", $view["select"])) || !$this->driver->queries("DROP VIEW $database.$name")) {
                     return false;
@@ -167,7 +162,7 @@ class Server extends AbstractServer
         $this->driver->queries("SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO'");
         $overwrite = $this->util->input()->getOverwrite();
         foreach ($tables as $table) {
-            $name = ($target == $this->driver->selectedDatabase() ? $this->driver->table("copy_$table") : $this->driver->escapeId($target) . "." . $this->driver->table($table));
+            $name = ($target == $this->driver->database() ? $this->driver->table("copy_$table") : $this->driver->escapeId($target) . "." . $this->driver->table($table));
             if (($overwrite && !$this->driver->queries("\nDROP TABLE IF EXISTS $name"))
                 || !$this->driver->queries("CREATE TABLE $name LIKE " . $this->driver->table($table))
                 || !$this->driver->queries("INSERT INTO $name SELECT * FROM " . $this->driver->table($table))
@@ -176,13 +171,13 @@ class Server extends AbstractServer
             }
             foreach ($this->driver->rows("SHOW TRIGGERS LIKE " . $this->driver->quote(addcslashes($table, "%_\\"))) as $row) {
                 $trigger = $row["Trigger"];
-                if (!$this->driver->queries("CREATE TRIGGER " . ($target == $this->driver->selectedDatabase() ? $this->driver->escapeId("copy_$trigger") : $this->driver->escapeId($target) . "." . $this->driver->escapeId($trigger)) . " $row[Timing] $row[Event] ON $name FOR EACH ROW\n$row[Statement];")) {
+                if (!$this->driver->queries("CREATE TRIGGER " . ($target == $this->driver->database() ? $this->driver->escapeId("copy_$trigger") : $this->driver->escapeId($target) . "." . $this->driver->escapeId($trigger)) . " $row[Timing] $row[Event] ON $name FOR EACH ROW\n$row[Statement];")) {
                     return false;
                 }
             }
         }
         foreach ($views as $table) {
-            $name = ($target == $this->driver->selectedDatabase() ? $this->driver->table("copy_$table") : $this->driver->escapeId($target) . "." . $this->driver->table($table));
+            $name = ($target == $this->driver->database() ? $this->driver->table("copy_$table") : $this->driver->escapeId($target) . "." . $this->driver->table($table));
             $view = $this->driver->view($table);
             if (($overwrite && !$this->driver->queries("DROP VIEW IF EXISTS $name"))
                 || !$this->driver->queries("CREATE VIEW $name AS $view[select]")) { //! USE to avoid db.table
@@ -257,7 +252,7 @@ class Server extends AbstractServer
                 }
             }
             $renamed = (!$tables && !$views) || $this->driver->moveTables($tables, $views, $name);
-            $this->dropDatabases($renamed ? [$this->driver->selectedDatabase()] : []);
+            $this->dropDatabases($renamed ? [$this->driver->database()] : []);
         }
         return $renamed;
     }
@@ -304,7 +299,7 @@ class Server extends AbstractServer
     public function routines()
     {
         $rows = $this->driver->rows("SELECT ROUTINE_NAME, ROUTINE_TYPE, DTD_IDENTIFIER " .
-            "FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = " . $this->driver->quote($this->driver->selectedDatabase()));
+            "FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = " . $this->driver->quote($this->driver->database()));
         return array_map(function($row) {
             return new RoutineEntity($row['ROUTINE_NAME'], $row['ROUTINE_NAME'], $row['ROUTINE_TYPE'], $row['DTD_IDENTIFIER']);
         }, $rows);

@@ -3,11 +3,6 @@
 namespace Lagdo\DbAdmin\Driver\MySql\Db;
 
 use Lagdo\DbAdmin\Driver\Entity\TableFieldEntity;
-use Lagdo\DbAdmin\Driver\Entity\TableEntity;
-use Lagdo\DbAdmin\Driver\Entity\IndexEntity;
-use Lagdo\DbAdmin\Driver\Entity\ForeignKeyEntity;
-use Lagdo\DbAdmin\Driver\Entity\TriggerEntity;
-use Lagdo\DbAdmin\Driver\Entity\RoutineEntity;
 
 use Lagdo\DbAdmin\Driver\Db\Grammar as AbstractGrammar;
 
@@ -57,7 +52,7 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function createTableSql(string $table, bool $autoIncrement, string $style)
+    public function sqlForCreateTable(string $table, bool $autoIncrement, string $style)
     {
         $query = $this->connection->result("SHOW CREATE TABLE " . $this->table($table), 1);
         if (!$autoIncrement) {
@@ -69,7 +64,7 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function truncateTableSql(string $table)
+    public function sqlForTruncateTable(string $table)
     {
         return "TRUNCATE " . $this->table($table);
     }
@@ -77,7 +72,7 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function useDatabaseSql(string $database)
+    public function sqlForUseDatabase(string $database)
     {
         return "USE " . $this->escapeId($database);
     }
@@ -85,7 +80,7 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function createTriggerSql(string $table)
+    public function sqlForCreateTrigger(string $table)
     {
         $query = "";
         foreach ($this->driver->rows("SHOW TRIGGERS LIKE " .

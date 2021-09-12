@@ -2,13 +2,6 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql;
 
-use Lagdo\DbAdmin\Driver\Entity\TableFieldEntity;
-use Lagdo\DbAdmin\Driver\Entity\TableEntity;
-use Lagdo\DbAdmin\Driver\Entity\IndexEntity;
-use Lagdo\DbAdmin\Driver\Entity\ForeignKeyEntity;
-use Lagdo\DbAdmin\Driver\Entity\TriggerEntity;
-use Lagdo\DbAdmin\Driver\Entity\RoutineEntity;
-
 use Lagdo\DbAdmin\Driver\Driver as AbstractDriver;
 
 class Driver extends AbstractDriver
@@ -37,7 +30,8 @@ class Driver extends AbstractDriver
             throw new AuthException($this->util->lang('No package installed to connect to a MySQL server.'));
         }
 
-        if ($this->connection === null) {
+        $firstConnection = ($this->connection === null);
+        if ($firstConnection) {
             $this->connection = $connection;
             $this->server = new Db\Server($this, $this->util, $connection);
             $this->table = new Db\Table($this, $this->util, $connection);
@@ -58,7 +52,8 @@ class Driver extends AbstractDriver
         // Available in MySQLi since PHP 5.0.5
         $connection->setCharset($this->charset());
         $connection->query("SET sql_quote_show_create = 1, autocommit = 1");
-        if ($this->minVersion('5.7.8', 10.2, $connection)) {
+
+        if ($firstConnection && $this->minVersion('5.7.8', 10.2, $connection)) {
             $this->config->structuredTypes[$this->util->lang('Strings')][] = "json";
             $this->config->types["json"] = 4294967295;
         }
@@ -69,12 +64,12 @@ class Driver extends AbstractDriver
     /**
      * @inheritDoc
      */
-    protected function setConfig()
+    protected function initConfig()
     {
         $this->config->jush = 'sql';
         $this->config->drivers = ["MySQLi", "PDO_MySQL"];
 
-        $types = [
+        $groups = [
             $this->util->lang('Numbers') => ["tinyint" => 3, "smallint" => 5, "mediumint" => 8, "int" => 10, "bigint" => 20, "decimal" => 66, "float" => 12, "double" => 21],
             $this->util->lang('Date and time') => ["date" => 10, "datetime" => 19, "timestamp" => 19, "time" => 10, "year" => 4],
             $this->util->lang('Strings') => ["char" => 255, "varchar" => 65535, "tinytext" => 255, "text" => 65535, "mediumtext" => 16777215, "longtext" => 4294967295],
@@ -82,9 +77,9 @@ class Driver extends AbstractDriver
             $this->util->lang('Binary') => ["bit" => 20, "binary" => 255, "varbinary" => 65535, "tinyblob" => 255, "blob" => 65535, "mediumblob" => 16777215, "longblob" => 4294967295],
             $this->util->lang('Geometry') => ["geometry" => 0, "point" => 0, "linestring" => 0, "polygon" => 0, "multipoint" => 0, "multilinestring" => 0, "multipolygon" => 0, "geometrycollection" => 0],
         ];
-        foreach ($types as $group => $_types) {
-            $this->config->structuredTypes[$group] = array_keys($_types);
-            $this->config->types = array_merge($this->config->types, $_types);
+        foreach ($groups as $name => $types) {
+            $this->config->structuredTypes[$name] = array_keys($types);
+            $this->config->types = array_merge($this->config->types, $types);
         }
 
         $this->config->unsigned = ["unsigned", "zerofill", "unsigned zerofill"]; ///< @var array number variants
