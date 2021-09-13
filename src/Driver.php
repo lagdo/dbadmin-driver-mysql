@@ -21,22 +21,22 @@ class Driver extends AbstractDriver
     {
         $connection = null;
         if (extension_loaded("mysqli")) {
-            $connection = new Db\MySqli\Connection($this, $this->util, 'MySQLi');
+            $connection = new Db\MySqli\Connection($this, $this->util, $this->trans, 'MySQLi');
         }
         elseif (extension_loaded("pdo_mysql")) {
-            $connection = new Db\Pdo\Connection($this, $this->util, 'PDO_MySQL');
+            $connection = new Db\Pdo\Connection($this, $this->util, $this->trans, 'PDO_MySQL');
         }
         else {
-            throw new AuthException($this->util->lang('No package installed to connect to a MySQL server.'));
+            throw new AuthException($this->trans->lang('No package installed to connect to a MySQL server.'));
         }
 
         $firstConnection = ($this->connection === null);
         if ($firstConnection) {
             $this->connection = $connection;
-            $this->server = new Db\Server($this, $this->util, $connection);
-            $this->table = new Db\Table($this, $this->util, $connection);
-            $this->query = new Db\Query($this, $this->util, $connection);
-            $this->grammar = new Db\Grammar($this, $this->util, $connection);
+            $this->server = new Db\Server($this, $this->util, $this->trans, $connection);
+            $this->table = new Db\Table($this, $this->util, $this->trans, $connection);
+            $this->query = new Db\Query($this, $this->util, $this->trans, $connection);
+            $this->grammar = new Db\Grammar($this, $this->util, $this->trans, $connection);
         }
 
         if (!$connection->open($this->options('server'), $this->options())) {
@@ -54,7 +54,7 @@ class Driver extends AbstractDriver
         $connection->query("SET sql_quote_show_create = 1, autocommit = 1");
 
         if ($firstConnection && $this->minVersion('5.7.8', 10.2, $connection)) {
-            $this->config->structuredTypes[$this->util->lang('Strings')][] = "json";
+            $this->config->structuredTypes[$this->trans->lang('Strings')][] = "json";
             $this->config->types["json"] = 4294967295;
         }
 
@@ -70,12 +70,12 @@ class Driver extends AbstractDriver
         $this->config->drivers = ["MySQLi", "PDO_MySQL"];
 
         $groups = [
-            $this->util->lang('Numbers') => ["tinyint" => 3, "smallint" => 5, "mediumint" => 8, "int" => 10, "bigint" => 20, "decimal" => 66, "float" => 12, "double" => 21],
-            $this->util->lang('Date and time') => ["date" => 10, "datetime" => 19, "timestamp" => 19, "time" => 10, "year" => 4],
-            $this->util->lang('Strings') => ["char" => 255, "varchar" => 65535, "tinytext" => 255, "text" => 65535, "mediumtext" => 16777215, "longtext" => 4294967295],
-            $this->util->lang('Lists') => ["enum" => 65535, "set" => 64],
-            $this->util->lang('Binary') => ["bit" => 20, "binary" => 255, "varbinary" => 65535, "tinyblob" => 255, "blob" => 65535, "mediumblob" => 16777215, "longblob" => 4294967295],
-            $this->util->lang('Geometry') => ["geometry" => 0, "point" => 0, "linestring" => 0, "polygon" => 0, "multipoint" => 0, "multilinestring" => 0, "multipolygon" => 0, "geometrycollection" => 0],
+            $this->trans->lang('Numbers') => ["tinyint" => 3, "smallint" => 5, "mediumint" => 8, "int" => 10, "bigint" => 20, "decimal" => 66, "float" => 12, "double" => 21],
+            $this->trans->lang('Date and time') => ["date" => 10, "datetime" => 19, "timestamp" => 19, "time" => 10, "year" => 4],
+            $this->trans->lang('Strings') => ["char" => 255, "varchar" => 65535, "tinytext" => 255, "text" => 65535, "mediumtext" => 16777215, "longtext" => 4294967295],
+            $this->trans->lang('Lists') => ["enum" => 65535, "set" => 64],
+            $this->trans->lang('Binary') => ["bit" => 20, "binary" => 255, "varbinary" => 65535, "tinyblob" => 255, "blob" => 65535, "mediumblob" => 16777215, "longblob" => 4294967295],
+            $this->trans->lang('Geometry') => ["geometry" => 0, "point" => 0, "linestring" => 0, "polygon" => 0, "multipoint" => 0, "multilinestring" => 0, "multipolygon" => 0, "geometrycollection" => 0],
         ];
         foreach ($groups as $name => $types) {
             $this->config->structuredTypes[$name] = array_keys($types);
