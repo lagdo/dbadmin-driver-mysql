@@ -30,8 +30,7 @@ class Driver extends AbstractDriver
             throw new AuthException($this->trans->lang('No package installed to connect to a MySQL server.'));
         }
 
-        $firstConnection = ($this->connection === null);
-        if ($firstConnection) {
+        if ($this->connection === null) {
             $this->connection = $connection;
             $this->server = new Db\Server($this, $this->util, $this->trans, $connection);
             $this->table = new Db\Table($this, $this->util, $this->trans, $connection);
@@ -39,26 +38,30 @@ class Driver extends AbstractDriver
             $this->grammar = new Db\Grammar($this, $this->util, $this->trans, $connection);
         }
 
-        if (!$connection->open($this->options('server'), $this->options())) {
-            $error = $this->error();
-            // windows-1250 - most common Windows encoding
-            if (function_exists('iconv') && !$this->util->isUtf8($error) &&
-                strlen($s = iconv("windows-1250", "utf-8", $error)) > strlen($error)) {
-                $error = $s;
-            }
-            throw new AuthException($error);
-        }
+        // if (!$connection->open($this->options('server'), $this->options())) {
+        //     $error = $this->error();
+        //     // windows-1250 - most common Windows encoding
+        //     if (function_exists('iconv') && !$this->util->isUtf8($error) &&
+        //         strlen($s = iconv("windows-1250", "utf-8", $error)) > strlen($error)) {
+        //         $error = $s;
+        //     }
+        //     throw new AuthException($error);
+        // }
 
-        // Available in MySQLi since PHP 5.0.5
-        $connection->setCharset($this->charset());
-        $connection->query("SET sql_quote_show_create = 1, autocommit = 1");
+        return $connection;
+    }
 
-        if ($firstConnection && $this->minVersion('5.7.8', 10.2, $connection)) {
+    /**
+     * @inheritDoc
+     */
+    public function connect(string $database, string $schema)
+    {
+        parent::connect($database, $schema);
+
+        if ($this->minVersion('5.7.8', 10.2)) {
             $this->config->structuredTypes[$this->trans->lang('Strings')][] = "json";
             $this->config->types["json"] = 4294967295;
         }
-
-        return $connection;
     }
 
     /**

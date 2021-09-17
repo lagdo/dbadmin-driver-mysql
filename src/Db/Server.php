@@ -141,7 +141,7 @@ class Server extends AbstractServer
             foreach ($views as $table) {
                 $definitions[$this->driver->table($table)] = $this->driver->view($table);
             }
-            $this->connection->selectDatabase($target);
+            $this->connection->open($target);
             $database = $this->driver->escapeId($this->driver->database());
             foreach ($definitions as $name => $view) {
                 if (!$this->driver->queries("CREATE VIEW $name AS " . str_replace(" $database.", " ", $view["select"])) || !$this->driver->queries("DROP VIEW $database.$name")) {

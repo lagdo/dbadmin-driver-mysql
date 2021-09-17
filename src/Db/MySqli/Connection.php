@@ -14,12 +14,12 @@ class Connection extends AbstractConnection
     /**
     * @inheritDoc
     */
-    public function open(string $server, array $options)
+    public function open(string $database, string $schema = '')
     {
+        $server = $this->driver->options('server');
+        $options = $this->driver->options();
         $username = $options['username'];
         $password = $options['password'];
-        $database = null;
-        $port = null;
         $socket = null;
 
         // Create the MySQLi client
@@ -33,7 +33,7 @@ class Connection extends AbstractConnection
             $this->client->ssl_set($ssl['key'], $ssl['cert'], $ssl['ca'], '', '');
         }
 
-        $connected = @$this->client->real_connect(
+        if (!@$this->client->real_connect(
             ($server != "" ? $host : ini_get("mysqli.default_host")),
             ($server . $username != "" ? $username : ini_get("mysqli.default_user")),
             ($server . $username . $password != "" ? $password : ini_get("mysqli.default_pw")),
@@ -41,9 +41,18 @@ class Connection extends AbstractConnection
             (is_numeric($port) ? $port : ini_get("mysqli.default_port")),
             (!is_numeric($port) ? $port : $socket),
             ($ssl ? MYSQLI_CLIENT_SSL_DONT_VERIFY_SERVER_CERT : 0) // (not available before PHP 5.6.16)
-        );
+        )) {
+            return false;
+        }
+
         $this->client->options(MYSQLI_OPT_LOCAL_INFILE, false);
-        return $connected;
+        if (($database)) {
+            $this->client->select_db($database);
+        }
+        // Available in MySQLi since PHP 5.0.5
+        $this->setCharset($this->driver->charset());
+        $this->query("SET sql_quote_show_create = 1, autocommit = 1");
+        return true;
     }
 
     /**
@@ -52,14 +61,6 @@ class Connection extends AbstractConnection
     public function serverInfo()
     {
         return $this->client->server_info;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function selectDatabase(string $database)
-    {
-        return $this->client->select_db($database);
     }
 
     /**

@@ -14,8 +14,10 @@ class Connection extends PdoConnection
     /**
      * @inheritDoc
      */
-    public function open(string $server, array $options)
+    public function open(string $database, string $schema = '')
     {
+        $server = $this->driver->options('server');
+        $options = $this->driver->options();
         $username = $options['username'];
         $password = $options['password'];
 
@@ -32,9 +34,15 @@ class Connection extends PdoConnection
                 $options[PDO::MYSQL_ATTR_SSL_CA] = $ssl['ca'];
             }
         }
-        $this->dsn("mysql:charset=utf8;host=" .
-            str_replace(":", ";unix_socket=", preg_replace('~:(\d)~', ';port=\1', $server)),
-            $username, $password, $options);
+        $this->dsn("mysql:charset=utf8;host=" . str_replace(":", ";unix_socket=",
+            preg_replace('~:(\d)~', ';port=\1', $server)), $username, $password, $options);
+
+        if (($database)) {
+            $this->query("USE " . $this->server->escapeId($database));
+        }
+        // Available in MySQLi since PHP 5.0.5
+        $this->setCharset($this->driver->charset());
+        $this->query("SET sql_quote_show_create = 1, autocommit = 1");
         return true;
     }
 
@@ -44,15 +52,6 @@ class Connection extends PdoConnection
     public function setCharset(string $charset)
     {
         $this->query("SET NAMES $charset"); // charset in DSN is ignored before PHP 5.3.6
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function selectDatabase(string $database)
-    {
-        // database selection is separated from the connection so dbname in DSN can't be used
-        return $this->query("USE " . $this->server->escapeId($database));
     }
 
     /**
