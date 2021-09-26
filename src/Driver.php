@@ -154,6 +154,7 @@ class Driver extends AbstractDriver
      */
     public function support(string $feature)
     {
+        // $this->features contains features that are not available.
         return !in_array($feature, $this->features);
     }
 
@@ -164,12 +165,7 @@ class Driver extends AbstractDriver
     {
         $this->config->jush = 'sql';
         $this->config->drivers = ["MySQLi", "PDO_MySQL"];
-
-        foreach ($this->types as $group => $types) {
-            $this->config->structuredTypes[$this->trans->lang($group)] = array_keys($types);
-            $this->config->types = array_merge($this->config->types, $types);
-        }
-
+        $this->config->setTypes($this->types, $this->trans);
         $this->config->unsigned = $this->unsigned;
         $this->config->operators = $this->operators;
         $this->config->functions = $this->functions;
