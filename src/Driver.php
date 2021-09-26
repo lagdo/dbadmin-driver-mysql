@@ -7,6 +7,78 @@ use Lagdo\DbAdmin\Driver\Driver as AbstractDriver;
 class Driver extends AbstractDriver
 {
     /**
+     * Features not available
+     *
+     * @var array
+     */
+    private $features = ['scheme', 'sequence', 'type', 'view_trigger', 'materializedview'];
+
+    /**
+     * Data types
+     *
+     * @var array
+     */
+    private $types = [
+        'Numbers' => ["tinyint" => 3, "smallint" => 5, "mediumint" => 8, "int" => 10,
+            "bigint" => 20, "decimal" => 66, "float" => 12, "double" => 21],
+        'Date and time' => ["date" => 10, "datetime" => 19, "timestamp" => 19, "time" => 10, "year" => 4],
+        'Strings' => ["char" => 255, "varchar" => 65535, "tinytext" => 255,
+            "text" => 65535, "mediumtext" => 16777215, "longtext" => 4294967295],
+        'Lists' => ["enum" => 65535, "set" => 64],
+        'Binary' => ["bit" => 20, "binary" => 255, "varbinary" => 65535, "tinyblob" => 255,
+            "blob" => 65535, "mediumblob" => 16777215, "longblob" => 4294967295],
+        'Geometry' => ["geometry" => 0, "point" => 0, "linestring" => 0, "polygon" => 0,
+            "multipoint" => 0, "multilinestring" => 0, "multipolygon" => 0, "geometrycollection" => 0],
+    ];
+
+    /**
+     * Number variants
+     *
+     * @var array
+     */
+    private $unsigned = ["unsigned", "zerofill", "unsigned zerofill"];
+
+    /**
+     * Operators used in select
+     *
+     * @var array
+     */
+    private $operators = ["=", "<", ">", "<=", ">=", "!=", "LIKE", "LIKE %%",
+        "REGEXP", "IN", "FIND_IN_SET", "IS NULL", "NOT LIKE", "NOT REGEXP",
+        "NOT IN", "IS NOT NULL", "SQL"];
+
+    /**
+     * Functions used in select
+     *
+     * @var array
+     */
+    private $functions = ["char_length", "date", "from_unixtime", "lower",
+        "round", "floor", "ceil", "sec_to_time", "time_to_sec", "upper"];
+
+    /**
+     * Grouping functions used in select
+     *
+     * @var array
+     */
+    private $grouping = ["avg", "count", "count distinct", "group_concat", "max", "min", "sum"];
+
+    /**
+     * Functions used to edit data
+     *
+     * @var array
+     */
+    private $editFunctions = [[
+        "char" => "md5/sha1/password/encrypt/uuid",
+        "binary" => "md5/sha1",
+        "date|time" => "now",
+    ],[
+        // $this->numberRegex() => "+/-",
+        "date" => "+ interval/- interval",
+        "time" => "addtime/subtime",
+        "char|text" => "concat",
+    ]];
+
+    /**
      * @inheritDoc
      */
     public function name()
@@ -58,10 +130,31 @@ class Driver extends AbstractDriver
     {
         parent::connect($database, $schema);
 
+        if (!$this->minVersion(8)) {
+            $this->features[] = 'descidx';
+            if (!$this->minVersion(5.1)) {
+                $this->features[] = 'event';
+                $this->features[] = 'partitioning';
+                if (!$this->minVersion(5)) {
+                    $this->features[] = 'routine';
+                    $this->features[] = 'trigger';
+                    $this->features[] = 'view';
+                }
+            }
+        }
+
         if ($this->minVersion('5.7.8', 10.2)) {
             $this->config->structuredTypes[$this->trans->lang('Strings')][] = "json";
             $this->config->types["json"] = 4294967295;
         }
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function support(string $feature)
+    {
+        return !in_array($feature, $this->features);
     }
 
     /**
@@ -72,54 +165,16 @@ class Driver extends AbstractDriver
         $this->config->jush = 'sql';
         $this->config->drivers = ["MySQLi", "PDO_MySQL"];
 
-        $groups = [
-            $this->trans->lang('Numbers') => ["tinyint" => 3, "smallint" => 5, "mediumint" => 8, "int" => 10, "bigint" => 20, "decimal" => 66, "float" => 12, "double" => 21],
-            $this->trans->lang('Date and time') => ["date" => 10, "datetime" => 19, "timestamp" => 19, "time" => 10, "year" => 4],
-            $this->trans->lang('Strings') => ["char" => 255, "varchar" => 65535, "tinytext" => 255, "text" => 65535, "mediumtext" => 16777215, "longtext" => 4294967295],
-            $this->trans->lang('Lists') => ["enum" => 65535, "set" => 64],
-            $this->trans->lang('Binary') => ["bit" => 20, "binary" => 255, "varbinary" => 65535, "tinyblob" => 255, "blob" => 65535, "mediumblob" => 16777215, "longblob" => 4294967295],
-            $this->trans->lang('Geometry') => ["geometry" => 0, "point" => 0, "linestring" => 0, "polygon" => 0, "multipoint" => 0, "multilinestring" => 0, "multipolygon" => 0, "geometrycollection" => 0],
-        ];
-        foreach ($groups as $name => $types) {
-            $this->config->structuredTypes[$name] = array_keys($types);
+        foreach ($this->types as $group => $types) {
+            $this->config->structuredTypes[$this->trans->lang($group)] = array_keys($types);
             $this->config->types = array_merge($this->config->types, $types);
         }
 
-        $this->config->unsigned = ["unsigned", "zerofill", "unsigned zerofill"]; ///< @var array number variants
-        $this->config->operators = ["=", "<", ">", "<=", ">=", "!=", "LIKE", "LIKE %%", "REGEXP", "IN", "FIND_IN_SET", "IS NULL", "NOT LIKE", "NOT REGEXP", "NOT IN", "IS NOT NULL", "SQL"]; ///< @var array operators used in select
-        $this->config->functions = ["char_length", "date", "from_unixtime", "lower", "round", "floor", "ceil", "sec_to_time", "time_to_sec", "upper"]; ///< @var array functions used in select
-        $this->config->grouping = ["avg", "count", "count distinct", "group_concat", "max", "min", "sum"]; ///< @var array grouping functions used in select];
-        $this->config->editFunctions = [[
-            "char" => "md5/sha1/password/encrypt/uuid",
-            "binary" => "md5/sha1",
-            "date|time" => "now",
-        ],[
-            $this->numberRegex() => "+/-",
-            "date" => "+ interval/- interval",
-            "time" => "addtime/subtime",
-            "char|text" => "concat",
-        ]];
+        $this->config->unsigned = $this->unsigned;
+        $this->config->operators = $this->operators;
+        $this->config->functions = $this->functions;
+        $this->config->grouping = $this->grouping;
+        $this->config->editFunctions = $this->editFunctions;
+        $this->config->editFunctions[1][$this->numberRegex()] = "+/-";
     }
-
-    /**
-     * @inheritDoc
-     */
-    public function support(string $feature)
-    {
-        return !preg_match("~scheme|sequence|type|view_trigger|materializedview" .
-            ($this->minVersion(8) ? "" : "|descidx" . ($this->minVersion(5.1) ? "" :
-            "|event|partitioning" . ($this->minVersion(5) ? "" : "|routine|trigger|view"))) . "~", $feature);
-    }
-
-    /**
-     * @inheritDoc
-     */
-    // public function warnings() {
-    //     $result = $this->connection->query("SHOW WARNINGS");
-    //     if ($result && $result->numRows) {
-    //         ob_start();
-    //         select($result); // select() usually needs to print a big table progressively
-    //         return ob_get_clean();
-    //     }
-    // }
 }
