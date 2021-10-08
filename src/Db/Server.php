@@ -80,6 +80,14 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
+    public function events()
+    {
+        return $this->driver->support("event") ? $this->driver->rows("SHOW EVENTS") : [];
+    }
+
+    /**
+     * @inheritDoc
+     */
     public function tables()
     {
         return $this->driver->keyValues($this->driver->minVersion(5) ?
