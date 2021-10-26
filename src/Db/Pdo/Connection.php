@@ -38,7 +38,7 @@ class Connection extends PdoConnection
             preg_replace('~:(\d)~', ';port=\1', $server)), $username, $password, $options);
 
         if (($database)) {
-            $this->query("USE " . $this->server->escapeId($database));
+            $this->query("USE " . $this->driver->escapeId($database));
         }
         // Available in MySQLi since PHP 5.0.5
         $this->setCharset($this->driver->charset());

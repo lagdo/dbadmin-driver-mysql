@@ -7,6 +7,8 @@ use Lagdo\DbAdmin\Driver\Entity\StatementFieldEntity;
 
 use mysqli_result;
 
+use function is_a;
+
 class Statement implements StatementInterface
 {
     /**

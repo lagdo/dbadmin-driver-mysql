@@ -3,6 +3,7 @@
 namespace Lagdo\DbAdmin\Driver\MySql;
 
 use Lagdo\DbAdmin\Driver\Driver as AbstractDriver;
+use Lagdo\DbAdmin\Driver\Exception\AuthException;
 
 class Driver extends AbstractDriver
 {

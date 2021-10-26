@@ -270,19 +270,25 @@ class Server extends AbstractServer
      */
     public function routine(string $name, string $type)
     {
-        $aliases = ["bool", "boolean", "integer", "double precision", "real", "dec", "numeric", "fixed", "national char", "national varchar"];
+        $enumLength = $this->driver->enumLength();
+        $aliases = ["bool", "boolean", "integer", "double precision", "real", "dec",
+            "numeric", "fixed", "national char", "national varchar"];
         $space = "(?:\\s|/\\*[\s\S]*?\\*/|(?:#|-- )[^\n]*\n?|--\r?\n)";
-        $type_pattern = "((" . implode("|", array_merge(array_keys($this->driver->config->types), $aliases)) . ")\\b(?:\\s*\\(((?:[^'\")]|$this->driver->enumLength)++)\\))?\\s*(zerofill\\s*)?(unsigned(?:\\s+zerofill)?)?)(?:\\s*(?:CHARSET|CHARACTER\\s+SET)\\s*['\"]?([^'\"\\s,]+)['\"]?)?";
-        $pattern = "$space*(" . ($type == "FUNCTION" ? "" : $this->driver->inout) . ")?\\s*(?:`((?:[^`]|``)*)`\\s*|\\b(\\S+)\\s+)$type_pattern";
+        $type_pattern = "((" . implode("|", array_merge(array_keys($this->driver->types()), $aliases)) .
+            ")\\b(?:\\s*\\(((?:[^'\")]|$enumLength)++)\\))?\\s*(zerofill\\s*)?(unsigned" .
+            "(?:\\s+zerofill)?)?)(?:\\s*(?:CHARSET|CHARACTER\\s+SET)\\s*['\"]?([^'\"\\s,]+)['\"]?)?";
+        $pattern = "$space*(" . ($type == "FUNCTION" ? "" : $this->driver->inout()) .
+            ")?\\s*(?:`((?:[^`]|``)*)`\\s*|\\b(\\S+)\\s+)$type_pattern";
         $create = $this->connection->result("SHOW CREATE $type " . $this->driver->escapeId($name), 2);
-        preg_match("~\\(((?:$pattern\\s*,?)*)\\)\\s*" . ($type == "FUNCTION" ? "RETURNS\\s+$type_pattern\\s+" : "") . "(.*)~is", $create, $match);
+        preg_match("~\\(((?:$pattern\\s*,?)*)\\)\\s*" .
+            ($type == "FUNCTION" ? "RETURNS\\s+$type_pattern\\s+" : "") . "(.*)~is", $create, $match);
         $fields = [];
         preg_match_all("~$pattern\\s*,?~is", $match[1], $matches, PREG_SET_ORDER);
         foreach ($matches as $param) {
             $fields[] = [
                 "field" => str_replace("``", "`", $param[2]) . $param[3],
                 "type" => strtolower($param[5]),
-                "length" => preg_replace_callback("~{$this->driver->enumLength}~s", 'normalize_enum', $param[6]),
+                "length" => preg_replace_callback("~$enumLength~s", 'normalize_enum', $param[6]),
                 "unsigned" => strtolower(preg_replace('~\s+~', ' ', trim("$param[8] $param[7]"))),
                 "null" => 1,
                 "full_type" => $param[4],

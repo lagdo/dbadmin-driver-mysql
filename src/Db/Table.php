@@ -6,6 +6,7 @@ use Lagdo\DbAdmin\Driver\Entity\TableFieldEntity;
 use Lagdo\DbAdmin\Driver\Entity\TableEntity;
 use Lagdo\DbAdmin\Driver\Entity\IndexEntity;
 use Lagdo\DbAdmin\Driver\Entity\ForeignKeyEntity;
+use Lagdo\DbAdmin\Driver\Entity\TriggerEntity;
 
 use Lagdo\DbAdmin\Driver\Db\ConnectionInterface;
 
@@ -14,30 +15,62 @@ use Lagdo\DbAdmin\Driver\Db\Table as AbstractTable;
 class Table extends AbstractTable
 {
     /**
+     * @param bool $fast
+     * @param string $table
+     *
+     * @return array
+     */
+    private function queryStatus(bool $fast, string $table = '')
+    {
+        $query = ($fast && $this->driver->minVersion(5)) ?
+            "SELECT TABLE_NAME AS Name, ENGINE AS Engine, TABLE_COMMENT AS Comment " .
+            "FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() " .
+            ($table != "" ? "AND TABLE_NAME = " . $this->driver->quote($table) : "ORDER BY Name") :
+            "SHOW TABLE STATUS" . ($table != "" ? " LIKE " . $this->driver->quote(addcslashes($table, "%_\\")) : "");
+        return $this->driver->rows($query);
+    }
+
+    /**
+     * @param array $row
+     *
+     * @return TableEntity
+     */
+    private function makeStatus(array $row)
+    {
+        $status = new TableEntity($row['Name']);
+        $status->engine = $row['Engine'];
+        if ($row["Engine"] == "InnoDB") {
+            // ignore internal comment, unnecessary since MySQL 5.1.21
+            $status->comment = preg_replace('~(?:(.+); )?InnoDB free: .*~', '\1', $row["Comment"]);
+        }
+        // if (!isset($row["Engine"])) {
+        //     $row["Comment"] = "";
+        // }
+
+        return $status;
+    }
+
+    /**
      * @inheritDoc
      */
-    public function tableStatus(string $table = "", bool $fast = false)
+    public function tableStatus(string $table, bool $fast = false)
+    {
+        $rows = $this->queryStatus($fast, $table);
+        if (!($row = reset($rows))) {
+            return null;
+        }
+        return $this->makeStatus($row);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function tablesStatuses(bool $fast = false)
     {
         $tables = [];
-        foreach ($this->driver->rows($fast && $this->driver->minVersion(5) ?
-            "SELECT TABLE_NAME AS Name, ENGINE AS Engine, TABLE_COMMENT AS Comment FROM information_schema.TABLES " .
-            "WHERE TABLE_SCHEMA = DATABASE() " . ($table != "" ? "AND TABLE_NAME = " . $this->driver->quote($table) : "ORDER BY Name") :
-            "SHOW TABLE STATUS" . ($table != "" ? " LIKE " . $this->driver->quote(addcslashes($table, "%_\\")) : "")
-        ) as $row) {
-            $status = new TableEntity($row['Name']);
-            $status->engine = $row['Engine'];
-            if ($row["Engine"] == "InnoDB") {
-                // ignore internal comment, unnecessary since MySQL 5.1.21
-                $status->comment = preg_replace('~(?:(.+); )?InnoDB free: .*~', '\1', $row["Comment"]);
-            }
-            // if (!isset($row["Engine"])) {
-            //     $row["Comment"] = "";
-            // }
-
-            if ($table != "") {
-                return $status;
-            }
-            $tables[$row["Name"]] = $status;
+        $rows = $this->queryStatus($fast);
+        foreach ($rows as $row) {
+            $tables[$row["Name"]] = $this->makeStatus($row);
         }
         return $tables;
     }
@@ -73,8 +106,9 @@ class Table extends AbstractTable
             $field->privileges = array_flip(preg_split('~, *~', $row["Privileges"]));
             $field->comment = $row["Comment"];
             $field->primary = ($row["Key"] == "PRI");
-                // https://mariadb.com/kb/en/library/show-columns/, https://github.com/vrana/adminer/pull/359#pullrequestreview-276677186
-            $field->generated = preg_match('~^(VIRTUAL|PERSISTENT|STORED)~', $row["Extra"]);
+            // https://mariadb.com/kb/en/library/show-columns/
+            // https://github.com/vrana/adminer/pull/359#pullrequestreview-276677186
+            $field->generated = (preg_match('~^(VIRTUAL|PERSISTENT|STORED)~', $row["Extra"]));
 
             $fields[$field->name] = $field;
         }
@@ -172,20 +206,20 @@ class Table extends AbstractTable
     {
         $alter = [];
         foreach ($fields as $field) {
-            $alter[] = (
-                $field[1]
-                ? ($table != "" ? ($field[0] != "" ? "CHANGE " . $this->driver->escapeId($field[0]) : "ADD") : " ") . " " . implode($field[1]) . ($table != "" ? $field[2] : "")
-                : "DROP " . $this->driver->escapeId($field[0])
+            $alter[] = ($field[1] ? ($table != "" ? ($field[0] != "" ? "CHANGE " .
+                $this->driver->escapeId($field[0]) : "ADD") : " ") . " " .
+                implode($field[1]) . ($table != "" ? $field[2] : "") :
+                "DROP " . $this->driver->escapeId($field[0])
             );
         }
         $alter = array_merge($alter, $foreign);
-        $status = ($comment !== null ? " COMMENT=" . $this->driver->quote($comment) : "")
-            . ($engine ? " ENGINE=" . $this->driver->quote($engine) : "")
-            . ($collation ? " COLLATE " . $this->driver->quote($collation) : "")
-            . ($autoIncrement != "" ? " AUTO_INCREMENT=$autoIncrement" : "")
-        ;
+        $status = " COMMENT=" . $this->driver->quote($comment) .
+            ($engine ? " ENGINE=" . $this->driver->quote($engine) : "") .
+            ($collation ? " COLLATE " . $this->driver->quote($collation) : "") .
+            ($autoIncrement != "" ? " AUTO_INCREMENT=$autoIncrement" : "");
         if ($table == "") {
-            return $this->driver->driver->execute("CREATE TABLE " . $this->driver->table($name) . " (\n" . implode(",\n", $alter) . "\n)$status$partitioning");
+            return $this->driver->execute("CREATE TABLE " . $this->driver->table($name) .
+                " (\n" . implode(",\n", $alter) . "\n)$status$partitioning");
         }
         if ($table != $name) {
             $alter[] = "RENAME TO " . $this->driver->table($name);
@@ -193,7 +227,8 @@ class Table extends AbstractTable
         if ($status) {
             $alter[] = ltrim($status);
         }
-        return ($alter || $partitioning ? $this->driver->execute("ALTER TABLE " . $this->driver->table($table) . "\n" . implode(",\n", $alter) . $partitioning) : true);
+        return ($alter || $partitioning ? $this->driver->execute("ALTER TABLE " .
+            $this->driver->table($table) . "\n" . implode(",\n", $alter) . $partitioning) : true);
     }
 
     /**
@@ -217,10 +252,13 @@ class Table extends AbstractTable
     public function trigger(string $trigger)
     {
         if ($trigger == "") {
-            return [];
+            return null;
         }
         $rows = $this->driver->rows("SHOW TRIGGERS WHERE `Trigger` = " . $this->driver->quote($trigger));
-        return reset($rows);
+        if (!($row = reset($rows))) {
+            return null;
+        }
+        return new TriggerEntity($row["Timing"], $row["Event"]);
     }
 
     /**
@@ -230,7 +268,7 @@ class Table extends AbstractTable
     {
         $triggers = [];
         foreach ($this->driver->rows("SHOW TRIGGERS LIKE " . $this->driver->quote(addcslashes($table, "%_\\"))) as $row) {
-            $triggers[$row["Trigger"]] = new Trigger($row["Timing"], $row["Event"]);
+            $triggers[$row["Trigger"]] = new TriggerEntity($row["Timing"], $row["Event"]);
         }
         return $triggers;
     }
