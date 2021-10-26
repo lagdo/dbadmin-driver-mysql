@@ -16,8 +16,8 @@ class Query extends AbstractQuery
      */
     public function insert(string $table, array $set)
     {
-        return ($set ? parent::insert($table, $set) : $this->queries("INSERT INTO " .
-            $this->driver->table($table) . " ()\nVALUES ()"));
+        return ($set ? parent::insert($table, $set) :
+            $this->execute("INSERT INTO " . $this->driver->table($table) . " ()\nVALUES ()"));
     }
 
     /**
@@ -37,7 +37,7 @@ class Query extends AbstractQuery
         foreach ($rows as $set) {
             $value = "(" . implode(", ", $set) . ")";
             if ($values && (strlen($prefix) + $length + strlen($value) + strlen($suffix) > 1e6)) { // 1e6 - default max_allowed_packet
-                if (!$this->queries($prefix . implode(",\n", $values) . $suffix)) {
+                if (!$this->execute($prefix . implode(",\n", $values) . $suffix)) {
                     return false;
                 }
                 $values = [];
@@ -46,7 +46,7 @@ class Query extends AbstractQuery
             $values[] = $value;
             $length += strlen($value) + 2; // 2 - strlen(",\n")
         }
-        return $this->queries($prefix . implode(",\n", $values) . $suffix);
+        return $this->execute($prefix . implode(",\n", $values) . $suffix);
     }
 
     /**

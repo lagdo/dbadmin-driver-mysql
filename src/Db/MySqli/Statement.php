@@ -14,14 +14,7 @@ class Statement implements StatementInterface
      *
      * @var mysqli_result
      */
-    public $result = null;
-
-    /**
-     * Undocumented variable
-     *
-     * @var int
-     */
-    public $numRows = 0;
+    protected $result = null;
 
     /**
      * The constructor
@@ -32,8 +25,15 @@ class Statement implements StatementInterface
     {
         if (is_a($result, mysqli_result::class)) {
             $this->result = $result;
-            $this->numRows = $result->num_rows;
         }
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function rowCount()
+    {
+        return $this->result ? $this->result->num_rows : 0;
     }
 
     /**

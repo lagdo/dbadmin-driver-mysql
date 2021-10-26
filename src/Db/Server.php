@@ -112,7 +112,7 @@ class Server extends AbstractServer
      */
     public function dropViews(array $views)
     {
-        return $this->driver->queries("DROP VIEW " . implode(", ", array_map(function ($view) {
+        return $this->driver->execute("DROP VIEW " . implode(", ", array_map(function ($view) {
             return $this->driver->table($view);
         }, $views)));
     }
@@ -122,7 +122,7 @@ class Server extends AbstractServer
      */
     public function dropTables(array $tables)
     {
-        return $this->driver->queries("DROP TABLE " . implode(", ", array_map(function ($table) {
+        return $this->driver->execute("DROP TABLE " . implode(", ", array_map(function ($table) {
             return $this->driver->table($table);
         }, $tables)));
     }
@@ -144,7 +144,7 @@ class Server extends AbstractServer
         foreach ($tables as $table) {
             $rename[] = $this->driver->table($table) . " TO " . $this->driver->escapeId($target) . "." . $this->driver->table($table);
         }
-        if (!$rename || $this->driver->queries("RENAME TABLE " . implode(", ", $rename))) {
+        if (!$rename || $this->driver->execute("RENAME TABLE " . implode(", ", $rename))) {
             $definitions = [];
             foreach ($views as $table) {
                 $definitions[$this->driver->table($table)] = $this->driver->view($table);
@@ -152,7 +152,7 @@ class Server extends AbstractServer
             $this->connection->open($target);
             $database = $this->driver->escapeId($this->driver->database());
             foreach ($definitions as $name => $view) {
-                if (!$this->driver->queries("CREATE VIEW $name AS " . str_replace(" $database.", " ", $view["select"])) || !$this->driver->queries("DROP VIEW $database.$name")) {
+                if (!$this->driver->execute("CREATE VIEW $name AS " . str_replace(" $database.", " ", $view["select"])) || !$this->driver->execute("DROP VIEW $database.$name")) {
                     return false;
                 }
             }
@@ -167,19 +167,19 @@ class Server extends AbstractServer
      */
     public function copyTables(array $tables, array $views, string $target)
     {
-        $this->driver->queries("SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO'");
+        $this->driver->execute("SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO'");
         $overwrite = $this->util->input()->getOverwrite();
         foreach ($tables as $table) {
             $name = ($target == $this->driver->database() ? $this->driver->table("copy_$table") : $this->driver->escapeId($target) . "." . $this->driver->table($table));
-            if (($overwrite && !$this->driver->queries("\nDROP TABLE IF EXISTS $name"))
-                || !$this->driver->queries("CREATE TABLE $name LIKE " . $this->driver->table($table))
-                || !$this->driver->queries("INSERT INTO $name SELECT * FROM " . $this->driver->table($table))
+            if (($overwrite && !$this->driver->execute("\nDROP TABLE IF EXISTS $name"))
+                || !$this->driver->execute("CREATE TABLE $name LIKE " . $this->driver->table($table))
+                || !$this->driver->execute("INSERT INTO $name SELECT * FROM " . $this->driver->table($table))
             ) {
                 return false;
             }
             foreach ($this->driver->rows("SHOW TRIGGERS LIKE " . $this->driver->quote(addcslashes($table, "%_\\"))) as $row) {
                 $trigger = $row["Trigger"];
-                if (!$this->driver->queries("CREATE TRIGGER " . ($target == $this->driver->database() ? $this->driver->escapeId("copy_$trigger") : $this->driver->escapeId($target) . "." . $this->driver->escapeId($trigger)) . " $row[Timing] $row[Event] ON $name FOR EACH ROW\n$row[Statement];")) {
+                if (!$this->driver->execute("CREATE TRIGGER " . ($target == $this->driver->database() ? $this->driver->escapeId("copy_$trigger") : $this->driver->escapeId($target) . "." . $this->driver->escapeId($trigger)) . " $row[Timing] $row[Event] ON $name FOR EACH ROW\n$row[Statement];")) {
                     return false;
                 }
             }
@@ -187,8 +187,8 @@ class Server extends AbstractServer
         foreach ($views as $table) {
             $name = ($target == $this->driver->database() ? $this->driver->table("copy_$table") : $this->driver->escapeId($target) . "." . $this->driver->table($table));
             $view = $this->driver->view($table);
-            if (($overwrite && !$this->driver->queries("DROP VIEW IF EXISTS $name"))
-                || !$this->driver->queries("CREATE VIEW $name AS $view[select]")) { //! USE to avoid db.table
+            if (($overwrite && !$this->driver->execute("DROP VIEW IF EXISTS $name"))
+                || !$this->driver->execute("CREATE VIEW $name AS $view[select]")) { //! USE to avoid db.table
                 return false;
             }
         }
@@ -229,7 +229,7 @@ class Server extends AbstractServer
      */
     public function createDatabase(string $database, string $collation)
     {
-        return $this->driver->queries("CREATE DATABASE " . $this->driver->escapeId($database) .
+        return $this->driver->execute("CREATE DATABASE " . $this->driver->escapeId($database) .
             ($collation ? " COLLATE " . $this->driver->quote($collation) : ""));
     }
 
@@ -358,7 +358,7 @@ class Server extends AbstractServer
      */
     // public function killProcess($val)
     // {
-    //     return $this->driver->queries("KILL " . $this->util->number($val));
+    //     return $this->driver->execute("KILL " . $this->util->number($val));
     // }
 
     /**

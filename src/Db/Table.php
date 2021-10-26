@@ -185,7 +185,7 @@ class Table extends AbstractTable
             . ($autoIncrement != "" ? " AUTO_INCREMENT=$autoIncrement" : "")
         ;
         if ($table == "") {
-            return $this->driver->driver->queries("CREATE TABLE " . $this->driver->table($name) . " (\n" . implode(",\n", $alter) . "\n)$status$partitioning");
+            return $this->driver->driver->execute("CREATE TABLE " . $this->driver->table($name) . " (\n" . implode(",\n", $alter) . "\n)$status$partitioning");
         }
         if ($table != $name) {
             $alter[] = "RENAME TO " . $this->driver->table($name);
@@ -193,7 +193,7 @@ class Table extends AbstractTable
         if ($status) {
             $alter[] = ltrim($status);
         }
-        return ($alter || $partitioning ? $this->driver->queries("ALTER TABLE " . $this->driver->table($table) . "\n" . implode(",\n", $alter) . $partitioning) : true);
+        return ($alter || $partitioning ? $this->driver->execute("ALTER TABLE " . $this->driver->table($table) . "\n" . implode(",\n", $alter) . $partitioning) : true);
     }
 
     /**
@@ -208,7 +208,7 @@ class Table extends AbstractTable
                 : "\nADD $val[0] " . ($val[0] == "PRIMARY" ? "KEY " : "") . ($val[1] != "" ? $this->driver->escapeId($val[1]) . " " : "") . "(" . implode(", ", $val[2]) . ")"
             );
         }
-        return $this->driver->queries("ALTER TABLE " . $this->driver->table($table) . implode(",", $alter));
+        return $this->driver->execute("ALTER TABLE " . $this->driver->table($table) . implode(",", $alter));
     }
 
     /**
