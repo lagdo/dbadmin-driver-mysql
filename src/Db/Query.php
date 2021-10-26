@@ -88,7 +88,10 @@ class Query extends AbstractQuery
     public function view(string $name)
     {
         return [
-            "select" => preg_replace('~^(?:[^`]|`[^`]*`)*\s+AS\s+~isU', '',
+            'name' => $name,
+            'type' => 'VIEW',
+            'materialized' => false,
+            'select' => preg_replace('~^(?:[^`]|`[^`]*`)*\s+AS\s+~isU', '',
                 $this->connection->result("SHOW CREATE VIEW " . $this->driver->table($name), 1)),
         ];
     }
