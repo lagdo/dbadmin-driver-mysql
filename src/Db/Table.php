@@ -147,7 +147,7 @@ class Table extends AbstractTable
 
                 $foreignKey = new ForeignKeyEntity();
 
-                $foreignKey->db = $this->driver->unescapeId($match4 != "" ? $match3 : $match4);
+                $foreignKey->database = $this->driver->unescapeId($match4 != "" ? $match3 : $match4);
                 $foreignKey->table = $this->driver->unescapeId($match4 != "" ? $match4 : $match3);
                 $foreignKey->source = array_map(function ($idf) {
                     return $this->driver->unescapeId($idf);
