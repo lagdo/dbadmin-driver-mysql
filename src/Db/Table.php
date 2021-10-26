@@ -127,11 +127,12 @@ class Table extends AbstractTable
     {
         static $pattern = '(?:`(?:[^`]|``)+`|"(?:[^"]|"")+")';
         $foreignKeys = [];
+        $onActions = $this->driver->actions();
         $create_table = $this->connection->result("SHOW CREATE TABLE " . $this->driver->table($table), 1);
         if ($create_table) {
             preg_match_all("~CONSTRAINT ($pattern) FOREIGN KEY ?\\(((?:$pattern,? ?)+)\\) REFERENCES " .
-                "($pattern)(?:\\.($pattern))? \\(((?:$pattern,? ?)+)\\)(?: ON DELETE ({$this->driver->onActions}))" .
-                "?(?: ON UPDATE ({$this->driver->onActions}))?~", $create_table, $matches, PREG_SET_ORDER);
+                "($pattern)(?:\\.($pattern))? \\(((?:$pattern,? ?)+)\\)(?: ON DELETE ($onActions))" .
+                "?(?: ON UPDATE ($onActions))?~", $create_table, $matches, PREG_SET_ORDER);
 
             foreach ($matches as $match) {
                 $matchCount = count($match);

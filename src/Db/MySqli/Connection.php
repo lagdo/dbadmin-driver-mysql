@@ -88,8 +88,11 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    public function result(string $query, int $field = 0)
+    public function result(string $query, int $field = -1)
     {
+        if ($field === -1) {
+            $field = $this->defaultField();
+        }
         $result = $this->client->query($query);
         if (!$result) {
             return false;

@@ -21,7 +21,7 @@ class Grammar extends AbstractGrammar
      */
     public function limit(string $query, string $where, int $limit, int $offset = 0, string $separator = " ")
     {
-        return " $query$where" . ($limit !== null ? $separator . "LIMIT $limit" . ($offset ? " OFFSET $offset" : "") : "");
+        return " $query$where" . ($limit !== 0 ? $separator . "LIMIT $limit" . ($offset ? " OFFSET $offset" : "") : "");
     }
 
     /**
@@ -106,6 +106,7 @@ class Grammar extends AbstractGrammar
         if (preg_match("~geometry|point|linestring|polygon~", $field->type)) {
             return ($this->driver->minVersion(8) ? "ST_" : "") . "AsWKT(" . $this->escapeId($field->name) . ")";
         }
+        return '';
     }
 
     /**
