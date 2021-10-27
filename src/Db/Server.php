@@ -112,9 +112,10 @@ class Server extends AbstractServer
      */
     public function dropViews(array $views)
     {
-        return $this->driver->execute("DROP VIEW " . implode(", ", array_map(function ($view) {
+        $this->driver->execute("DROP VIEW " . implode(", ", array_map(function ($view) {
             return $this->driver->table($view);
         }, $views)));
+        return true;
     }
 
     /**
@@ -122,9 +123,10 @@ class Server extends AbstractServer
      */
     public function dropTables(array $tables)
     {
-        return $this->driver->execute("DROP TABLE " . implode(", ", array_map(function ($table) {
+        $this->driver->execute("DROP TABLE " . implode(", ", array_map(function ($table) {
             return $this->driver->table($table);
         }, $tables)));
+        return true;
     }
 
     /**
@@ -229,8 +231,9 @@ class Server extends AbstractServer
      */
     public function createDatabase(string $database, string $collation)
     {
-        return $this->driver->execute("CREATE DATABASE " . $this->driver->escapeId($database) .
+        $result = $this->driver->execute("CREATE DATABASE " . $this->driver->escapeId($database) .
             ($collation ? " COLLATE " . $this->driver->quote($collation) : ""));
+        return ($result !== false);
     }
 
     /**

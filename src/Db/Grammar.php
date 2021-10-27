@@ -84,7 +84,7 @@ class Grammar extends AbstractGrammar
     {
         $query = "";
         foreach ($this->driver->rows("SHOW TRIGGERS LIKE " .
-            $this->quote(addcslashes($table, "%_\\")), null, "-- ") as $row) {
+            $this->quote(addcslashes($table, "%_\\")), null) as $row) {
             $query .= "\nCREATE TRIGGER " . $this->escapeId($row["Trigger"]) .
                 " $row[Timing] $row[Event] ON " . $this->table($row["Table"]) .
                 " FOR EACH ROW\n$row[Statement];;\n";

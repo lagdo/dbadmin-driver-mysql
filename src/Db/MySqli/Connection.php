@@ -44,7 +44,7 @@ class Connection extends AbstractConnection
             ($server . $username != "" ? $username : ini_get("mysqli.default_user")),
             ($server . $username . $password != "" ? $password : ini_get("mysqli.default_pw")),
             $database,
-            (is_numeric($port) ? $port : intval(ini_get("mysqli.default_port"))),
+            (is_numeric($port) ? intval($port) : intval(ini_get("mysqli.default_port"))),
             (!is_numeric($port) ? $port : $socket),
             ($ssl ? MYSQLI_CLIENT_SSL_DONT_VERIFY_SERVER_CERT : 0) // (not available before PHP 5.6.16)
         )) {
