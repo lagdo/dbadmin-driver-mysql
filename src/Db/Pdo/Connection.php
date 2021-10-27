@@ -20,6 +20,9 @@ class Connection extends PdoConnection
         $options = $this->driver->options();
         $username = $options['username'];
         $password = $options['password'];
+        if (!$password) {
+            $password = '';
+        }
 
         $options = array(PDO::MYSQL_ATTR_LOCAL_INFILE => false);
         $ssl = $this->driver->options('');

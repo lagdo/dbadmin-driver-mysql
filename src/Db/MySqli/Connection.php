@@ -96,15 +96,15 @@ class Connection extends AbstractConnection
      */
     public function result(string $query, int $field = -1)
     {
-        if ($field === -1) {
+        if ($field < 0) {
             $field = $this->defaultField();
         }
         $result = $this->client->query($query);
         if (!$result) {
-            return false;
+            return null;
         }
         $row = $result->fetch_array();
-        return $row[$field];
+        return count($row) > $field ? $row[$field] : null;
     }
 
     /**
@@ -113,14 +113,6 @@ class Connection extends AbstractConnection
     public function quote(string $string)
     {
         return "'" . $this->client->escape_string($string) . "'";
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function nextResult()
-    {
-        return $this->client->next_result();
     }
 
     /**
@@ -138,5 +130,13 @@ class Connection extends AbstractConnection
     {
         $result = $this->client->store_result();
         return ($result) ? new Statement($result) : null;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function nextResult()
+    {
+        return $this->client->next_result();
     }
 }

@@ -23,8 +23,9 @@ class Query extends AbstractQuery
      */
     public function insert(string $table, array $set)
     {
-        return ($set ? parent::insert($table, $set) :
+        $result = ($set ? parent::insert($table, $set) :
             $this->execute('INSERT INTO ' . $this->driver->table($table) . ' () VALUES ()'));
+        return $result == true;
     }
 
     /**
@@ -54,7 +55,8 @@ class Query extends AbstractQuery
             $values[] = $value;
             $length += strlen($value) + 2; // 2 - strlen(",\n")
         }
-        return $this->execute($prefix . implode(",\n", $values) . $suffix);
+        $result = $this->execute($prefix . implode(",\n", $values) . $suffix);
+        return $result == true;
     }
 
     /**

@@ -233,7 +233,7 @@ class Server extends AbstractServer
     {
         $result = $this->driver->execute("CREATE DATABASE " . $this->driver->escapeId($database) .
             ($collation ? " COLLATE " . $this->driver->quote($collation) : ""));
-        return ($result !== false);
+        return $result == true;
     }
 
     /**
