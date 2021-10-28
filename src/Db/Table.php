@@ -255,16 +255,16 @@ class Table extends AbstractTable
     /**
      * @inheritDoc
      */
-    public function trigger(string $trigger)
+    public function trigger(string $name, string $table = '')
     {
-        if ($trigger == "") {
+        if ($name == "") {
             return null;
         }
-        $rows = $this->driver->rows("SHOW TRIGGERS WHERE `Trigger` = " . $this->driver->quote($trigger));
+        $rows = $this->driver->rows("SHOW TRIGGERS WHERE `Trigger` = " . $this->driver->quote($name));
         if (!($row = reset($rows))) {
             return null;
         }
-        return new TriggerEntity($row["Timing"], $row["Event"]);
+        return new TriggerEntity($row["Timing"], $row["Event"], '', '', $row["Trigger"]);
     }
 
     /**
@@ -274,7 +274,7 @@ class Table extends AbstractTable
     {
         $triggers = [];
         foreach ($this->driver->rows("SHOW TRIGGERS LIKE " . $this->driver->quote(addcslashes($table, "%_\\"))) as $row) {
-            $triggers[$row["Trigger"]] = new TriggerEntity($row["Timing"], $row["Event"]);
+            $triggers[$row["Trigger"]] = new TriggerEntity($row["Timing"], $row["Event"], '', '', $row["Trigger"]);
         }
         return $triggers;
     }
