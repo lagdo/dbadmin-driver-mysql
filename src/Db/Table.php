@@ -65,12 +65,25 @@ class Table extends AbstractTable
     /**
      * @inheritDoc
      */
-    public function tablesStatuses(bool $fast = false)
+    public function tableStatuses(bool $fast = false)
     {
         $tables = [];
         $rows = $this->queryStatus($fast);
         foreach ($rows as $row) {
             $tables[$row["Name"]] = $this->makeStatus($row);
+        }
+        return $tables;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function tableNames()
+    {
+        $tables = [];
+        $rows = $this->queryStatus(true);
+        foreach ($rows as $row) {
+            $tables[] = $row["Name"];
         }
         return $tables;
     }
@@ -122,6 +135,32 @@ class Table extends AbstractTable
     {
         return preg_match('~InnoDB|IBMDB2I~i', $tableStatus->engine)
             || (preg_match('~NDB~i', $tableStatus->engine) && $this->driver->minVersion(5.6));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function referencableTables(string $table)
+    {
+        $fields = []; // table_name => [field]
+        foreach ($this->tableStatuses(true) as $tableName => $tableStatus) {
+            if ($tableName === $table || !$this->supportForeignKeys($tableStatus)) {
+                continue;
+            }
+            foreach ($this->fields($tableName) as $field) {
+                if ($field->primary) {
+                    if (!isset($fields[$tableName])) {
+                        $fields[$tableName] = $field;
+                    } else {
+                        // No multi column primary key
+                        $fields[$tableName] = null;
+                    }
+                }
+            }
+        }
+        return array_filter($fields, function($field) {
+            return $field !== null;
+        });
     }
 
     /**
@@ -196,60 +235,6 @@ class Table extends AbstractTable
             }
         }
         return $foreignKeys;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function alterTable(string $table, string $name, array $fields, array $foreign,
-        string $comment, string $engine, string $collation, int $autoIncrement, string $partitioning)
-    {
-        $alter = [];
-        foreach ($fields as $field) {
-            $alter[] = ($field[1] ? ($table != "" ? ($field[0] != "" ? "CHANGE " .
-                $this->driver->escapeId($field[0]) : "ADD") : " ") . " " .
-                implode($field[1]) . ($table != "" ? $field[2] : "") :
-                "DROP " . $this->driver->escapeId($field[0])
-            );
-        }
-        $alter = array_merge($alter, $foreign);
-        $status = " COMMENT=" . $this->driver->quote($comment) .
-            ($engine ? " ENGINE=" . $this->driver->quote($engine) : "") .
-            ($collation ? " COLLATE " . $this->driver->quote($collation) : "") .
-            ($autoIncrement != "" ? " AUTO_INCREMENT=$autoIncrement" : "");
-        if ($table == "") {
-            $result = $this->driver->execute("CREATE TABLE " . $this->driver->table($name) .
-                " (\n" . implode(",\n", $alter) . "\n)$status$partitioning");
-            return $result !== false;
-        }
-        if ($table != $name) {
-            $alter[] = "RENAME TO " . $this->driver->table($name);
-        }
-        if ($status) {
-            $alter[] = ltrim($status);
-        }
-        if (!$alter && !$partitioning) {
-            return true;
-        }
-        $result = $this->driver->execute("ALTER TABLE " . $this->driver->table($table) . "\n" .
-            implode(",\n", $alter) . $partitioning);
-        return $result !== false;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function alterIndexes(string $table, array $alter)
-    {
-        foreach ($alter as $key => $val) {
-            $alter[$key] = (
-                $val[2] == "DROP"
-                ? "\nDROP INDEX " . $this->driver->escapeId($val[1])
-                : "\nADD $val[0] " . ($val[0] == "PRIMARY" ? "KEY " : "") . ($val[1] != "" ? $this->driver->escapeId($val[1]) . " " : "") . "(" . implode(", ", $val[2]) . ")"
-            );
-        }
-        $result = $this->driver->execute("ALTER TABLE " . $this->driver->table($table) . implode(",", $alter));
-        return $result !== false;
     }
 
     /**

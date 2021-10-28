@@ -3,6 +3,7 @@
 namespace Lagdo\DbAdmin\Driver\MySql\Db;
 
 use Lagdo\DbAdmin\Driver\Entity\TableFieldEntity;
+use Lagdo\DbAdmin\Driver\Entity\TableSelectEntity;
 
 use Lagdo\DbAdmin\Driver\Db\Grammar as AbstractGrammar;
 
@@ -52,6 +53,20 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
+    public function buildSelectQuery(TableSelectEntity $select)
+    {
+        $prefix = '';
+        if (($select->page) && ($select->limit) && !empty($select->group) &&
+            count($select->group) < count($select->fields)) {
+            $prefix = 'SQL_CALC_FOUND_ROWS ';
+        }
+
+        return $prefix . parent::buildSelectQuery($select);
+    }
+
+    /**
+     * @inheritDoc
+     */
     public function sqlForCreateTable(string $table, bool $autoIncrement, string $style)
     {
         $query = $this->connection->result("SHOW CREATE TABLE " . $this->table($table), 1);
@@ -84,7 +99,7 @@ class Grammar extends AbstractGrammar
     {
         $query = "";
         foreach ($this->driver->rows("SHOW TRIGGERS LIKE " .
-            $this->quote(addcslashes($table, "%_\\")), null) as $row) {
+            $this->driver->quote(addcslashes($table, "%_\\")), null) as $row) {
             $query .= "\nCREATE TRIGGER " . $this->escapeId($row["Trigger"]) .
                 " $row[Timing] $row[Event] ON " . $this->table($row["Table"]) .
                 " FOR EACH ROW\n$row[Statement];;\n";
