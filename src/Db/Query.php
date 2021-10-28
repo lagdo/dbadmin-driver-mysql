@@ -23,9 +23,11 @@ class Query extends AbstractQuery
      */
     public function insert(string $table, array $set)
     {
-        $result = ($set ? parent::insert($table, $set) :
-            $this->execute('INSERT INTO ' . $this->driver->table($table) . ' () VALUES ()'));
-        return $result == true;
+        if (!empty($set)) {
+            return parent::insert($table, $set);
+        }
+        $result = $this->execute('INSERT INTO ' . $this->driver->table($table) . ' () VALUES ()');
+        return $result !== false;
     }
 
     /**
@@ -56,7 +58,7 @@ class Query extends AbstractQuery
             $length += strlen($value) + 2; // 2 - strlen(",\n")
         }
         $result = $this->execute($prefix . implode(",\n", $values) . $suffix);
-        return $result == true;
+        return $result !== false;
     }
 
     /**

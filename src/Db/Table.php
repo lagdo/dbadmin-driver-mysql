@@ -94,7 +94,7 @@ class Table extends AbstractTable
             $field->name = $row["Field"];
             $field->fullType = $row["Type"];
             $field->type = $match1;
-            $field->length = $match2;
+            $field->length = intval($match2);
             $field->unsigned = ltrim($match3 . $match4);
             $field->default = ($row["Default"] != "" || preg_match("~char|set~", $match1) ?
                 (preg_match('~text~', $match1) ? stripslashes(preg_replace("~^'(.*)'\$~", '\1',
@@ -108,7 +108,7 @@ class Table extends AbstractTable
             $field->primary = ($row["Key"] == "PRI");
             // https://mariadb.com/kb/en/library/show-columns/
             // https://github.com/vrana/adminer/pull/359#pullrequestreview-276677186
-            $field->generated = (preg_match('~^(VIRTUAL|PERSISTENT|STORED)~', $row["Extra"]));
+            $field->generated = preg_match('~^(VIRTUAL|PERSISTENT|STORED)~', $row["Extra"]) > 0;
 
             $fields[$field->name] = $field;
         }
@@ -218,8 +218,9 @@ class Table extends AbstractTable
             ($collation ? " COLLATE " . $this->driver->quote($collation) : "") .
             ($autoIncrement != "" ? " AUTO_INCREMENT=$autoIncrement" : "");
         if ($table == "") {
-            return $this->driver->execute("CREATE TABLE " . $this->driver->table($name) .
+            $result = $this->driver->execute("CREATE TABLE " . $this->driver->table($name) .
                 " (\n" . implode(",\n", $alter) . "\n)$status$partitioning");
+            return $result !== false;
         }
         if ($table != $name) {
             $alter[] = "RENAME TO " . $this->driver->table($name);
@@ -227,8 +228,12 @@ class Table extends AbstractTable
         if ($status) {
             $alter[] = ltrim($status);
         }
-        return ($alter || $partitioning ? $this->driver->execute("ALTER TABLE " .
-            $this->driver->table($table) . "\n" . implode(",\n", $alter) . $partitioning) : true);
+        if (!$alter && !$partitioning) {
+            return true;
+        }
+        $result = $this->driver->execute("ALTER TABLE " . $this->driver->table($table) . "\n" .
+            implode(",\n", $alter) . $partitioning);
+        return $result !== false;
     }
 
     /**
@@ -243,7 +248,8 @@ class Table extends AbstractTable
                 : "\nADD $val[0] " . ($val[0] == "PRIMARY" ? "KEY " : "") . ($val[1] != "" ? $this->driver->escapeId($val[1]) . " " : "") . "(" . implode(", ", $val[2]) . ")"
             );
         }
-        return $this->driver->execute("ALTER TABLE " . $this->driver->table($table) . implode(",", $alter));
+        $result = $this->driver->execute("ALTER TABLE " . $this->driver->table($table) . implode(",", $alter));
+        return $result !== false;
     }
 
     /**

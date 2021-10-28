@@ -88,7 +88,7 @@ class Connection extends AbstractConnection
     public function query(string $query, bool $unbuffered = false)
     {
         $result = $this->client->query($query, $unbuffered);
-        return ($result) ? new Statement($result) : null;
+        return ($result) ? new Statement($result) : false;
     }
 
     /**

@@ -92,8 +92,10 @@ class Driver extends AbstractDriver
      */
     public function createConnection()
     {
-        $connection = null;
-        if (extension_loaded("pdo_mysql")) {
+        if (extension_loaded("mysqli")) {
+            $connection = new Db\MySqli\Connection($this, $this->util, $this->trans, 'MySQLi');
+        }
+        elseif (extension_loaded("pdo_mysql")) {
             $connection = new Db\Pdo\Connection($this, $this->util, $this->trans, 'PDO_MySQL');
         }
         else {
