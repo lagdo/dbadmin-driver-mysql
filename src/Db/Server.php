@@ -135,7 +135,7 @@ class Server extends AbstractServer
         if ($this->createDatabase($name, $collation)) {
             $tables = [];
             $views = [];
-            foreach ($this->tables() as $table => $type) {
+            foreach ($this->driver->tables() as $table => $type) {
                 if ($type == 'VIEW') {
                     $views[] = $table;
                 } else {

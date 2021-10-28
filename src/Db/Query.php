@@ -34,7 +34,7 @@ class Query extends AbstractQuery
         if (!empty($set)) {
             return parent::insert($table, $set);
         }
-        $result = $this->execute('INSERT INTO ' . $this->driver->table($table) . ' () VALUES ()');
+        $result = $this->driver->execute('INSERT INTO ' . $this->driver->table($table) . ' () VALUES ()');
         return $result !== false;
     }
 
@@ -56,7 +56,7 @@ class Query extends AbstractQuery
             $value = '(' . implode(', ', $set) . ')';
             if (!empty($values) && (strlen($prefix) + $length + strlen($value) + strlen($suffix) > 1e6)) {
                 // 1e6 - default max_allowed_packet
-                if (!$this->execute($prefix . implode(",\n", $values) . $suffix)) {
+                if (!$this->driver->execute($prefix . implode(",\n", $values) . $suffix)) {
                     return false;
                 }
                 $values = [];
@@ -65,7 +65,7 @@ class Query extends AbstractQuery
             $values[] = $value;
             $length += strlen($value) + 2; // 2 - strlen(",\n")
         }
-        $result = $this->execute($prefix . implode(",\n", $values) . $suffix);
+        $result = $this->driver->execute($prefix . implode(",\n", $values) . $suffix);
         return $result !== false;
     }
 
@@ -141,13 +141,5 @@ class Query extends AbstractQuery
     public function countRows(TableEntity $tableStatus, array $where)
     {
         return (!empty($where) || $tableStatus->engine != 'InnoDB' ? null : count($tableStatus->rows));
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function error()
-    {
-        return $this->util->html(preg_replace('~^You have an error.*syntax to use~U', 'Syntax error', $this->error));
     }
 }

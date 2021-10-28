@@ -174,4 +174,13 @@ class Driver extends AbstractDriver
         $this->config->editFunctions = $this->editFunctions;
         $this->config->editFunctions[1][$this->numberRegex()] = "+/-";
     }
+
+    /**
+     * @inheritDoc
+     */
+    public function error()
+    {
+        $error = preg_replace('~^You have an error.*syntax to use~U', 'Syntax error', parent::error());
+        return $this->util->html($error);
+    }
 }
