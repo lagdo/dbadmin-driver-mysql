@@ -21,9 +21,9 @@ class Query extends AbstractQuery
     /**
      * @inheritDoc
      */
-    protected function limitToOne(string $table, string $query, string $where, string $separator = "\n")
+    protected function limitToOne(string $table, string $query, string $where)
     {
-        return $this->driver->limit($query, $where, 1, 0, $separator);
+        return $this->driver->limit($query, $where, 1, 0);
     }
 
     /**

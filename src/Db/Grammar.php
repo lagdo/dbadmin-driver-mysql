@@ -20,14 +20,6 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function limit(string $query, string $where, int $limit, int $offset = 0, string $separator = " ")
-    {
-        return " $query$where" . ($limit !== 0 ? $separator . "LIMIT $limit" . ($offset ? " OFFSET $offset" : "") : "");
-    }
-
-    /**
-     * @inheritDoc
-     */
     public function autoIncrement()
     {
         $autoIncrementIndex = " PRIMARY KEY";
