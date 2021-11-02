@@ -29,10 +29,10 @@ class Query extends AbstractQuery
     /**
      * @inheritDoc
      */
-    public function insert(string $table, array $set)
+    public function insert(string $table, array $values)
     {
-        if (!empty($set)) {
-            return parent::insert($table, $set);
+        if (!empty($values)) {
+            return parent::insert($table, $values);
         }
         $result = $this->driver->execute('INSERT INTO ' . $this->driver->table($table) . ' () VALUES ()');
         return $result !== false;
