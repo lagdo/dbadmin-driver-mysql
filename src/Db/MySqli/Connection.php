@@ -129,7 +129,13 @@ class Connection extends AbstractConnection
     public function storedResult()
     {
         $result = $this->client->store_result();
-        return ($result) ? new Statement($result) : null;
+        if (!$result) { // The resultset is empty
+            // Error or no result
+            $this->driver->setError($this->client->error);
+            $this->setAffectedRows($this->client->affected_rows);
+            return null;
+        }
+        return new Statement($result);
     }
 
     /**
@@ -137,6 +143,8 @@ class Connection extends AbstractConnection
      */
     public function nextResult()
     {
+        $this->driver->setError();
+        $this->setAffectedRows(0);
         return $this->client->next_result();
     }
 }
