@@ -168,39 +168,39 @@ class Database extends AbstractDatabase
     /**
      * @inheritDoc
      */
-    public function copyTables(array $tables, array $views, string $target)
-    {
-        $this->driver->execute("SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO'");
-        $overwrite = $this->util->input()->getOverwrite();
-        foreach ($tables as $table) {
-            $name = ($target == $this->driver->database() ? $this->driver->table("copy_$table") : $this->driver->escapeId($target) . '.' . $this->driver->table($table));
-            if (($overwrite && !$this->driver->execute("\nDROP TABLE IF EXISTS $name"))
-                || !$this->driver->execute("CREATE TABLE $name LIKE " . $this->driver->table($table))
-                || !$this->driver->execute("INSERT INTO $name SELECT * FROM " . $this->driver->table($table))
-            ) {
-                return false;
-            }
-            foreach ($this->driver->rows('SHOW TRIGGERS LIKE ' . $this->driver->quote(addcslashes($table, "%_\\"))) as $row) {
-                $trigger = $row['Trigger'];
-                if (!$this->driver->execute('CREATE TRIGGER ' .
-                    ($target == $this->driver->database() ? $this->driver->escapeId("copy_$trigger") :
-                    $this->driver->escapeId($target) . '.' . $this->driver->escapeId($trigger)) .
-                    " $row[Timing] $row[Event] ON $name FOR EACH ROW\n$row[Statement];")) {
-                    return false;
-                }
-            }
-        }
-        foreach ($views as $table) {
-            $name = ($target == $this->driver->database() ? $this->driver->table("copy_$table") :
-                $this->driver->escapeId($target) . '.' . $this->driver->table($table));
-            $view = $this->driver->view($table);
-            if (($overwrite && !$this->driver->execute("DROP VIEW IF EXISTS $name"))
-                || !$this->driver->execute("CREATE VIEW $name AS $view[select]")) { //! USE to avoid db.table
-                return false;
-            }
-        }
-        return true;
-    }
+    // public function copyTables(array $tables, array $views, string $target)
+    // {
+    //     $this->driver->execute("SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO'");
+    //     $overwrite = $this->util->input()->getOverwrite();
+    //     foreach ($tables as $table) {
+    //         $name = ($target == $this->driver->database() ? $this->driver->table("copy_$table") : $this->driver->escapeId($target) . '.' . $this->driver->table($table));
+    //         if (($overwrite && !$this->driver->execute("\nDROP TABLE IF EXISTS $name"))
+    //             || !$this->driver->execute("CREATE TABLE $name LIKE " . $this->driver->table($table))
+    //             || !$this->driver->execute("INSERT INTO $name SELECT * FROM " . $this->driver->table($table))
+    //         ) {
+    //             return false;
+    //         }
+    //         foreach ($this->driver->rows('SHOW TRIGGERS LIKE ' . $this->driver->quote(addcslashes($table, "%_\\"))) as $row) {
+    //             $trigger = $row['Trigger'];
+    //             if (!$this->driver->execute('CREATE TRIGGER ' .
+    //                 ($target == $this->driver->database() ? $this->driver->escapeId("copy_$trigger") :
+    //                 $this->driver->escapeId($target) . '.' . $this->driver->escapeId($trigger)) .
+    //                 " $row[Timing] $row[Event] ON $name FOR EACH ROW\n$row[Statement];")) {
+    //                 return false;
+    //             }
+    //         }
+    //     }
+    //     foreach ($views as $table) {
+    //         $name = ($target == $this->driver->database() ? $this->driver->table("copy_$table") :
+    //             $this->driver->escapeId($target) . '.' . $this->driver->table($table));
+    //         $view = $this->driver->view($table);
+    //         if (($overwrite && !$this->driver->execute("DROP VIEW IF EXISTS $name"))
+    //             || !$this->driver->execute("CREATE VIEW $name AS $view[select]")) { //! USE to avoid db.table
+    //             return false;
+    //         }
+    //     }
+    //     return true;
+    // }
 
     /**
      * @inheritDoc
