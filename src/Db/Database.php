@@ -2,6 +2,7 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Db;
 
+use Lagdo\DbAdmin\Driver\Entity\TableEntity;
 use Lagdo\DbAdmin\Driver\Entity\RoutineEntity;
 
 use Lagdo\DbAdmin\Driver\Db\Database as AbstractDatabase;
@@ -9,57 +10,78 @@ use Lagdo\DbAdmin\Driver\Db\Database as AbstractDatabase;
 class Database extends AbstractDatabase
 {
     /**
+     * @param TableEntity $tableAttrs
+     *
+     * @return string
+     */
+    private function _tableStatus(TableEntity $tableAttrs)
+    {
+        return 'COMMENT=' . $this->driver->quote($tableAttrs->comment) .
+            ($tableAttrs->engine ? ' ENGINE=' . $this->driver->quote($tableAttrs->engine) : '') .
+            ($tableAttrs->collation ? ' COLLATE ' . $this->driver->quote($tableAttrs->collation) : '') .
+            ($tableAttrs->autoIncrement !== 0 ? " AUTO_INCREMENT=$tableAttrs->autoIncrement" : '');
+    }
+
+    /**
      * @inheritDoc
      */
-    public function alterTable(string $table, string $name, array $fields, array $foreign,
-        string $comment, string $engine, string $collation, int $autoIncrement, string $partitioning)
+    public function createTable(TableEntity $tableAttrs)
     {
-        $alter = [];
-        foreach ($fields as $field) {
-            $alter[] = ($field[1] ? ($table != '' ? ($field[0] != '' ? 'CHANGE ' .
-                $this->driver->escapeId($field[0]) : 'ADD') : ' ') . ' ' .
-                implode($field[1]) . ($table != '' ? $field[2] : '') :
-                'DROP ' . $this->driver->escapeId($field[0])
-            );
+        $clauses = [];
+        foreach ($tableAttrs->fields as $field) {
+            $clauses[] = implode($field[1]);
         }
-        $alter = array_merge($alter, $foreign);
-        $status = ' COMMENT=' . $this->driver->quote($comment) .
-            ($engine ? ' ENGINE=' . $this->driver->quote($engine) : '') .
-            ($collation ? ' COLLATE ' . $this->driver->quote($collation) : '') .
-            ($autoIncrement != '' ? " AUTO_INCREMENT=$autoIncrement" : '');
-        if ($table == '') {
-            $result = $this->driver->execute('CREATE TABLE ' . $this->driver->table($name) .
-                " (\n" . implode(",\n", $alter) . "\n)$status$partitioning");
-            return $result !== false;
-        }
-        if ($table != $name) {
-            $alter[] = 'RENAME TO ' . $this->driver->table($name);
-        }
-        if ($status) {
-            $alter[] = ltrim($status);
-        }
-        if (!$alter && !$partitioning) {
-            return true;
-        }
-        $result = $this->driver->execute('ALTER TABLE ' . $this->driver->table($table) . "\n" .
-            implode(",\n", $alter) . $partitioning);
+
+        $clauses = array_merge($clauses, $tableAttrs->foreign);
+        $status = $this->_tableStatus($tableAttrs);
+
+        $result = $this->driver->execute('CREATE TABLE ' . $this->driver->table($tableAttrs->name) .
+            ' (' . implode(', ', $clauses) . ") $status $tableAttrs->partitioning");
         return $result !== false;
     }
 
     /**
      * @inheritDoc
      */
-    public function alterIndexes(string $table, array $alter)
+    public function alterTable(string $table, TableEntity $tableAttrs)
     {
-        foreach ($alter as $key => $val) {
-            $alter[$key] = (
-                $val[2] == 'DROP'
-                ? "\nDROP INDEX " . $this->driver->escapeId($val[1])
-                : "\nADD $val[0] " . ($val[0] == 'PRIMARY' ? 'KEY ' : '') . ($val[1] != '' ?
-                $this->driver->escapeId($val[1]) . ' ' : '') . '(' . implode(', ', $val[2]) . ')'
-            );
+        $clauses = [];
+        foreach ($tableAttrs->fields as $field) {
+            $clauses[] = 'ADD ' . implode($field[1]) . $field[2];
         }
-        $result = $this->driver->execute('ALTER TABLE ' . $this->driver->table($table) . implode(',', $alter));
+        foreach ($tableAttrs->edited as $field) {
+            $clauses[] = 'CHANGE ' . $this->driver->escapeId($field[0]) . ' ' . implode($field[1]) . $field[2];
+        }
+        foreach ($tableAttrs->dropped as $column) {
+            $clauses[] = 'DROP ' . $this->driver->escapeId($column);
+        }
+
+        $clauses = array_merge($clauses, $tableAttrs->foreign);
+        if ($tableAttrs->name !== '' && $table !== $tableAttrs->name) {
+            $clauses[] = 'RENAME TO ' . $this->driver->table($tableAttrs->name);
+        }
+        $clauses[] = $this->_tableStatus($tableAttrs);
+
+        $result = $this->driver->execute('ALTER TABLE ' . $this->driver->table($table) . ' ' .
+            implode(', ', $clauses) . ' ' . $tableAttrs->partitioning);
+        return $result !== false;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function alterIndexes(string $table, array $alter, array $drop)
+    {
+        $clauses = [];
+        foreach ($drop as $index) {
+            $clauses[] = 'DROP INDEX ' . $this->driver->escapeId($index->name);
+        }
+        foreach ($alter as $index) {
+            $clauses[] = 'ADD ' . ($index->type == 'PRIMARY' ? 'PRIMARY KEY ' :  $index->type . ' ') .
+                ($index->name != '' ? $this->driver->escapeId($index->name) . ' ' : '') .
+                '(' . implode(', ', $index->columns) . ')';
+        }
+        $result = $this->driver->execute('ALTER TABLE ' . $this->driver->table($table) . ' ' . implode(', ', $clauses));
         return $result !== false;
     }
 
