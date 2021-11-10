@@ -96,25 +96,21 @@ class Table extends AbstractTable
         $fields = [];
         foreach ($this->driver->rows("SHOW FULL COLUMNS FROM " . $this->driver->table($table)) as $row) {
             preg_match('~^([^( ]+)(?:\((.+)\))?( unsigned)?( zerofill)?$~', $row["Type"], $match);
-            $matchCount = count($match);
-            $match1 = $matchCount > 1 ? $match[1] : '';
-            $match2 = $matchCount > 2 ? $match[2] : '';
-            $match3 = $matchCount > 3 ? $match[3] : '';
-            $match4 = $matchCount > 4 ? $match[4] : '';
+            $match = array_pad($match, 5, '');
 
             $field = new TableFieldEntity();
 
             $field->name = $row["Field"];
             $field->fullType = $row["Type"];
-            $field->type = $match1;
-            $field->length = intval($match2);
-            $field->unsigned = ltrim($match3 . $match4);
-            $field->default = ($row["Default"] != "" || preg_match("~char|set~", $match1) ?
-                (preg_match('~text~', $match1) ? stripslashes(preg_replace("~^'(.*)'\$~", '\1',
+            $field->type = $match[1];
+            $field->length = intval($match[2]);
+            $field->unsigned = ltrim($match[3] . $match[4]);
+            $field->default = ($row["Default"] != "" || preg_match("~char|set~", $match[1]) ?
+                (preg_match('~text~', $match[1]) ? stripslashes(preg_replace("~^'(.*)'\$~", '\1',
                 $row["Default"])) : $row["Default"]) : null);
             $field->null = ($row["Null"] == "YES");
             $field->autoIncrement = ($row["Extra"] == "auto_increment");
-            $field->onUpdate = (preg_match('~^on update (.+)~i', $row["Extra"], $match) ? $match1 : ""); //! available since MySQL 5.1.23
+            $field->onUpdate = (preg_match('~^on update (.+)~i', $row["Extra"], $match) ? $match[1] : ""); //! available since MySQL 5.1.23
             $field->collation = $row["Collation"];
             $field->privileges = array_flip(preg_split('~, *~', $row["Privileges"]));
             $field->comment = $row["Comment"];
@@ -208,30 +204,25 @@ class Table extends AbstractTable
                 "?(?: ON UPDATE ($onActions))?~", $create_table, $matches, PREG_SET_ORDER);
 
             foreach ($matches as $match) {
-                $matchCount = count($match);
-                $match1 = $matchCount > 1 ? $match[1] : '';
-                $match2 = $matchCount > 2 ? $match[2] : '';
-                $match3 = $matchCount > 3 ? $match[3] : '';
-                $match4 = $matchCount > 4 ? $match[4] : '';
-                $match5 = $matchCount > 5 ? $match[5] : '';
+                $match = array_pad($match, 8, '');
 
-                preg_match_all("~$pattern~", $match2, $source);
-                preg_match_all("~$pattern~", $match5, $target);
+                preg_match_all("~$pattern~", $match[2], $source);
+                preg_match_all("~$pattern~", $match[5], $target);
 
                 $foreignKey = new ForeignKeyEntity();
 
-                $foreignKey->database = $this->driver->unescapeId($match4 != "" ? $match3 : $match4);
-                $foreignKey->table = $this->driver->unescapeId($match4 != "" ? $match4 : $match3);
+                $foreignKey->database = $this->driver->unescapeId($match[4] != "" ? $match[3] : $match[4]);
+                $foreignKey->table = $this->driver->unescapeId($match[4] != "" ? $match[4] : $match[3]);
                 $foreignKey->source = array_map(function ($idf) {
                     return $this->driver->unescapeId($idf);
                 }, $source[0]);
                 $foreignKey->target = array_map(function ($idf) {
                     return $this->driver->unescapeId($idf);
                 }, $target[0]);
-                $foreignKey->onDelete = $matchCount > 6 ? $match[6] : "RESTRICT";
-                $foreignKey->onUpdate = $matchCount > 7 ? $match[7] : "RESTRICT";
+                $foreignKey->onDelete = $match[6] ?: "RESTRICT";
+                $foreignKey->onUpdate = $match[7] ?: "RESTRICT";
 
-                $foreignKeys[$this->driver->unescapeId($match1)] = $foreignKey;
+                $foreignKeys[$this->driver->unescapeId($match[1])] = $foreignKey;
             }
         }
         return $foreignKeys;
