@@ -133,7 +133,7 @@ class Connection extends AbstractConnection
             // Error or no result
             $this->driver->setError($this->client->error);
             $this->setAffectedRows($this->client->affected_rows);
-            return null;
+            return $this->client->error === '';
         }
         return new Statement($result);
     }
