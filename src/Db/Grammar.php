@@ -140,4 +140,12 @@ class Grammar extends AbstractGrammar
     {
         return "SELECT CONNECTION_ID()";
     }
+
+    /**
+     * @inheritDoc
+     */
+    protected function queryRegex()
+    {
+        return '\\s*|[\'"`#]|/\*|-- |$';
+    }
 }
