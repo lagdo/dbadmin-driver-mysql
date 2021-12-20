@@ -89,6 +89,7 @@ class Driver extends AbstractDriver
 
     /**
      * @inheritDoc
+     * @throws AuthException
      */
     public function createConnection()
     {
