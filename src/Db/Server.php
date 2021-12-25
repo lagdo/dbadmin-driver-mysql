@@ -182,7 +182,7 @@ class Server extends AbstractServer
     {
         $match = array_key_exists('Command', $process) && preg_match("~Query|Killed~", $process["Command"]);
         if ($key == "Info" && $match && $val != "") {
-            return '<code>' . $this->shortenUtf8($val, 50) . '</code>' . $this->lang('Clone');
+            return '<code>' . $this->util->shortenUtf8($val, 50) . '</code>' . $this->trans->lang('Clone');
         }
         return parent::processAttr($process, $key, $val);
     }
