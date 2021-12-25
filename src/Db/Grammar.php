@@ -136,10 +136,10 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function connectionId()
-    {
-        return "SELECT CONNECTION_ID()";
-    }
+    // public function connectionId()
+    // {
+    //     return "SELECT CONNECTION_ID()";
+    // }
 
     /**
      * @inheritDoc

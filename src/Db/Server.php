@@ -2,9 +2,12 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Db;
 
-use Lagdo\DbAdmin\Driver\Entity\RoutineEntity;
-
 use Lagdo\DbAdmin\Driver\Db\Server as AbstractServer;
+
+use function array_key_exists;
+use function is_object;
+use function intval;
+use function preg_match;
 
 class Server extends AbstractServer
 {
@@ -170,6 +173,18 @@ class Server extends AbstractServer
     public function processes()
     {
         return $this->driver->rows("SHOW FULL PROCESSLIST");
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function processAttr(array $process, string $key, string $val): string
+    {
+        $match = array_key_exists('Command', $process) && preg_match("~Query|Killed~", $process["Command"]);
+        if ($key == "Info" && $match && $val != "") {
+            return '<code>' . $this->shortenUtf8($val, 50) . '</code>' . $this->lang('Clone');
+        }
+        return parent::processAttr($process, $key, $val);
     }
 
     /**
