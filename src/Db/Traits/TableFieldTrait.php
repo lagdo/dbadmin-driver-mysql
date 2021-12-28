@@ -35,13 +35,14 @@ trait TableFieldTrait
     /**
      * @param array $row
      *
-     * @return mixed|string
+     * @return string
      */
     private function getRowUpdateFunction(array $row)
     {
         if (preg_match('~^on update (.+)~i', $row["Extra"], $match) === false) {
             return '';
         }
+        $match = array_pad($match, 2, '');
         return $match[1]; //! available since MySQL 5.1.23
     }
 
@@ -82,7 +83,8 @@ trait TableFieldTrait
     public function fields(string $table)
     {
         $fields = [];
-        foreach ($this->driver->rows("SHOW FULL COLUMNS FROM " . $this->driver->table($table)) as $row) {
+        $rows = $this->driver->rows("SHOW FULL COLUMNS FROM " . $this->driver->table($table));
+        foreach ($rows as $row) {
             $fields[$row["Field"]] = $this->makeTableFieldEntity($row);
         }
         return $fields;

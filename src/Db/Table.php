@@ -139,7 +139,7 @@ class Table extends AbstractTable
      */
     public function tableHelp(string $name)
     {
-        $maria = preg_match('~MariaDB~', $this->connection->serverInfo());
+        $maria = preg_match('~MariaDB~', $this->driver->serverInfo());
         if ($this->driver->isInformationSchema($this->driver->database())) {
             return strtolower(($maria ? "information-schema-$name-table/" : str_replace("_", "-", $name) . "-table.html"));
         }

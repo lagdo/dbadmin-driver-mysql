@@ -61,7 +61,7 @@ class Grammar extends AbstractGrammar
      */
     public function sqlForCreateTable(string $table, bool $autoIncrement, string $style)
     {
-        $query = $this->connection->result("SHOW CREATE TABLE " . $this->table($table), 1);
+        $query = $this->driver->result("SHOW CREATE TABLE " . $this->table($table), 1);
         if (!$autoIncrement) {
             $query = preg_replace('~ AUTO_INCREMENT=\d+~', '', $query); //! skip comments
         }

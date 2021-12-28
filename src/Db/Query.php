@@ -76,7 +76,7 @@ class Query extends AbstractQuery
     {
         // $this->connection->timeout = $timeout;
         if ($this->driver->minVersion('5.7.8', '10.1.2')) {
-            if (preg_match('~MariaDB~', $this->connection->serverInfo())) {
+            if (preg_match('~MariaDB~', $this->driver->serverInfo())) {
                 return "SET STATEMENT max_statement_time=$timeout FOR $query";
             } elseif (preg_match('~^(SELECT\b)(.+)~is', $query, $match)) {
                 return "$match[1] /*+ MAX_EXECUTION_TIME(" . ($timeout * 1000) . ") */ $match[2]";
@@ -101,7 +101,7 @@ class Query extends AbstractQuery
      */
     public function user()
     {
-        return $this->connection->result('SELECT USER()');
+        return $this->driver->result('SELECT USER()');
     }
 
     /**
@@ -114,7 +114,7 @@ class Query extends AbstractQuery
             'type' => 'VIEW',
             'materialized' => false,
             'select' => preg_replace('~^(?:[^`]|`[^`]*`)*\s+AS\s+~isU', '',
-                $this->connection->result('SHOW CREATE VIEW ' . $this->driver->table($name), 1)),
+                $this->driver->result('SHOW CREATE VIEW ' . $this->driver->table($name), 1)),
         ];
     }
 
@@ -123,7 +123,7 @@ class Query extends AbstractQuery
      */
     public function lastAutoIncrementId()
     {
-        return $this->connection->result('SELECT LAST_INSERT_ID()'); // mysql_insert_id() truncates bigint
+        return $this->driver->result('SELECT LAST_INSERT_ID()'); // mysql_insert_id() truncates bigint
     }
 
     /**

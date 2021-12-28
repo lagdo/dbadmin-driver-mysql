@@ -151,7 +151,7 @@ class Database extends AbstractDatabase
             foreach ($views as $table) {
                 $definitions[$this->driver->table($table)] = $this->driver->view($table);
             }
-            $this->connection->open($target);
+            // $this->connection->open($target);
             $database = $this->driver->escapeId($this->driver->database());
             foreach ($definitions as $name => $view) {
                 if (!$this->driver->execute("CREATE VIEW $name AS " . str_replace(" $database.", ' ', $view['select'])) ||
@@ -224,7 +224,7 @@ class Database extends AbstractDatabase
             "(?:\\s+zerofill)?)?)(?:\\s*(?:CHARSET|CHARACTER\\s+SET)\\s*['\"]?([^'\"\\s,]+)['\"]?)?";
         $pattern = "$space*(" . ($type == 'FUNCTION' ? '' : $this->driver->inout()) .
             ")?\\s*(?:`((?:[^`]|``)*)`\\s*|\\b(\\S+)\\s+)$type_pattern";
-        $create = $this->connection->result("SHOW CREATE $type " . $this->driver->escapeId($name), 2);
+        $create = $this->driver->result("SHOW CREATE $type " . $this->driver->escapeId($name), 2);
         preg_match("~\\(((?:$pattern\\s*,?)*)\\)\\s*" .
             ($type == "FUNCTION" ? "RETURNS\\s+$type_pattern\\s+" : '') . "(.*)~is", $create, $match);
         $fields = [];

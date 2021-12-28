@@ -3,9 +3,10 @@
 namespace Lagdo\DbAdmin\Driver\MySql\Db;
 
 use Lagdo\DbAdmin\Driver\Db\Server as AbstractServer;
+use Lagdo\DbAdmin\Driver\Db\StatementInterface;
 
 use function array_key_exists;
-use function is_object;
+use function is_a;
 use function intval;
 use function preg_match;
 
@@ -42,9 +43,9 @@ class Server extends AbstractServer
      */
     public function databaseSize(string $database)
     {
-        $statement = $this->connection->query("SELECT SUM(data_length + index_length) " .
+        $statement = $this->driver->execute("SELECT SUM(data_length + index_length) " .
             "FROM information_schema.tables where table_schema=" . $this->driver->quote($database));
-        if (is_object($statement) && ($row = $statement->fetchRow())) {
+        if (is_a($statement, StatementInterface::class) && ($row = $statement->fetchRow())) {
             return intval($row[0]);
         }
         return 0;
@@ -56,7 +57,7 @@ class Server extends AbstractServer
     public function databaseCollation(string $database, array $collations)
     {
         $collation = null;
-        $create = $this->connection->result("SHOW CREATE DATABASE " . $this->driver->escapeId($database), 1);
+        $create = $this->driver->result("SHOW CREATE DATABASE " . $this->driver->escapeId($database), 1);
         if (preg_match('~ COLLATE ([^ ]+)~', $create, $match)) {
             $collation = $match[1];
         } elseif (preg_match('~ CHARACTER SET ([^ ]+)~', $create, $match)) {
@@ -208,6 +209,6 @@ class Server extends AbstractServer
      */
     // public function maxConnections()
     // {
-    //     return $this->connection->result("SELECT @@max_connections");
+    //     return $this->driver->result("SELECT @@max_connections");
     // }
 }

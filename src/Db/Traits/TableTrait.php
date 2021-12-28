@@ -97,7 +97,7 @@ trait TableTrait
         static $pattern = '(?:`(?:[^`]|``)+`|"(?:[^"]|"")+")';
         $foreignKeys = [];
         $onActions = $this->driver->actions();
-        $createTable = $this->connection->result("SHOW CREATE TABLE " . $this->driver->table($table), 1);
+        $createTable = $this->driver->result("SHOW CREATE TABLE " . $this->driver->table($table), 1);
         if ($createTable) {
             preg_match_all("~CONSTRAINT ($pattern) FOREIGN KEY ?\\(((?:$pattern,? ?)+)\\) REFERENCES " .
                 "($pattern)(?:\\.($pattern))? \\(((?:$pattern,? ?)+)\\)(?: ON DELETE ($onActions))" .
