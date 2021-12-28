@@ -142,7 +142,9 @@ class Database extends AbstractDatabase
      */
     public function moveTables(array $tables, array $views, string $target)
     {
-        $rename = [];
+        // The feature is not natively provided by latest MySQL versions, thus it is disabled here.
+        return false;
+        /*$rename = [];
         foreach ($tables as $table) {
             $rename[] = $this->driver->table($table) . ' TO ' . $this->driver->escapeId($target) . '.' . $this->driver->table($table);
         }
@@ -162,7 +164,7 @@ class Database extends AbstractDatabase
             return true;
         }
         //! move triggers
-        return false;
+        return false;*/
     }
 
     /**
