@@ -135,7 +135,9 @@ class Server extends AbstractServer
      */
     public function renameDatabase(string $name, string $collation)
     {
-        $renamed = false;
+        // The feature is not natively provided by latest MySQL versions, thus it is disabled here.
+        return false;
+        /*$renamed = false;
         if ($this->createDatabase($name, $collation)) {
             $tables = [];
             $views = [];
@@ -149,7 +151,7 @@ class Server extends AbstractServer
             $renamed = (!$tables && !$views) || $this->driver->moveTables($tables, $views, $name);
             $this->dropDatabases($renamed ? [$this->driver->database()] : []);
         }
-        return $renamed;
+        return $renamed;*/
     }
 
     /**
