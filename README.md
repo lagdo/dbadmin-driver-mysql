@@ -1,5 +1,7 @@
 [![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/lagdo/dbadmin-driver-mysql/badges/quality-score.png?b=main)](https://scrutinizer-ci.com/g/lagdo/dbadmin-driver-mysql/?branch=main)
 [![StyleCI](https://styleci.io/repos/400390067/shield?branch=main)](https://styleci.io/repos/400390067)
+[![Build Status](https://api.travis-ci.com/lagdo/dbadmin-driver-mysql.svg?branch=main)](https://app.travis-ci.com/github/lagdo/dbadmin-driver-mysql)
+[![Coverage Status](https://coveralls.io/repos/github/lagdo/dbadmin-driver-mysql/badge.svg?branch=main)](https://coveralls.io/github/lagdo/dbadmin-driver-mysql?branch=main)
 
 [![Latest Stable Version](https://poser.pugx.org/lagdo/dbadmin-driver-mysql/v/stable)](https://packagist.org/packages/lagdo/dbadmin-driver-mysql)
 [![Total Downloads](https://poser.pugx.org/lagdo/dbadmin-driver-mysql/downloads)](https://packagist.org/packages/lagdo/dbadmin-driver-mysql)
