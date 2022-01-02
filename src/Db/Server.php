@@ -106,8 +106,8 @@ class Server extends AbstractServer
      */
     public function isInformationSchema(string $database)
     {
-        return ($this->driver->minVersion(5) && $database == "information_schema")
-            || ($this->driver->minVersion(5.5) && $database == "performance_schema");
+        return ($this->driver->minVersion(5) && $database == "information_schema") ||
+            ($this->driver->minVersion(5.5) && $database == "performance_schema");
     }
 
     /**
