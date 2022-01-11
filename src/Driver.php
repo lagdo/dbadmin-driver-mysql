@@ -4,6 +4,7 @@ namespace Lagdo\DbAdmin\Driver\MySql;
 
 use Lagdo\DbAdmin\Driver\Driver as AbstractDriver;
 use Lagdo\DbAdmin\Driver\Exception\AuthException;
+use Lagdo\DbAdmin\Driver\Db\Connection as AbstractConnection;
 
 class Driver extends AbstractDriver
 {
@@ -88,21 +89,14 @@ class Driver extends AbstractDriver
     }
 
     /**
-     * @inheritDoc
-     * @throws AuthException
+     * Initialize a new connection
+     *
+     * @param AbstractConnection $connection
+     *
+     * @return AbstractConnection
      */
-    public function createConnection()
+    private function initConnection(AbstractConnection $connection)
     {
-        if (extension_loaded("mysqli")) {
-            $connection = new Db\MySqli\Connection($this, $this->util, $this->trans, 'MySQLi');
-        }
-        elseif (extension_loaded("pdo_mysql")) {
-            $connection = new Db\Pdo\Connection($this, $this->util, $this->trans, 'PDO_MySQL');
-        }
-        else {
-            throw new AuthException($this->trans->lang('No package installed to connect to a MySQL server.'));
-        }
-
         if ($this->connection === null) {
             $this->connection = $connection;
             $this->server = new Db\Server($this, $this->util, $this->trans);
@@ -111,7 +105,6 @@ class Driver extends AbstractDriver
             $this->query = new Db\Query($this, $this->util, $this->trans);
             $this->grammar = new Db\Grammar($this, $this->util, $this->trans);
         }
-
         // if (!$connection->open($this->options('server'), $this->options())) {
         //     $error = $this->error();
         //     // windows-1250 - most common Windows encoding
@@ -121,8 +114,24 @@ class Driver extends AbstractDriver
         //     }
         //     throw new AuthException($error);
         // }
-
         return $connection;
+    }
+
+    /**
+     * @inheritDoc
+     * @throws AuthException
+     */
+    public function createConnection()
+    {
+        if (!$this->options('prefer_pdo', false) && extension_loaded("mysqli")) {
+            $connection = new Db\MySqli\Connection($this, $this->util, $this->trans, 'MySQLi');
+            return $this->initConnection($connection);
+        }
+        if (extension_loaded("pdo_mysql")) {
+            $connection = new Db\Pdo\Connection($this, $this->util, $this->trans, 'PDO_MySQL');
+            return $this->initConnection($connection);
+        }
+        throw new AuthException($this->trans->lang('No package installed to connect to a MySQL server.'));
     }
 
     /**
