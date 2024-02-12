@@ -4,14 +4,41 @@ namespace Lagdo\DbAdmin\Driver\MySql;
 
 use Lagdo\DbAdmin\Driver\Driver as AbstractDriver;
 use Lagdo\DbAdmin\Driver\Exception\AuthException;
-use Lagdo\DbAdmin\Driver\Db\Connection as AbstractConnection;
+use Lagdo\DbAdmin\Driver\TranslatorInterface;
+use Lagdo\DbAdmin\Driver\UtilInterface;
 
 class Driver extends AbstractDriver
 {
     /**
+     * The constructor
+     *
+     * @param UtilInterface $util
+     * @param TranslatorInterface $trans
+     * @param array $options
+     */
+    public function __construct(UtilInterface $util, TranslatorInterface $trans, array $options)
+    {
+        parent::__construct($util, $trans, $options);
+
+        $this->server = new Db\Server($this, $this->util, $this->trans);
+        $this->database = new Db\Database($this, $this->util, $this->trans);
+        $this->table = new Db\Table($this, $this->util, $this->trans);
+        $this->query = new Db\Query($this, $this->util, $this->trans);
+        $this->grammar = new Db\Grammar($this, $this->util, $this->trans);
+    }
+
+    /**
      * @inheritDoc
      */
-    protected function initDriver()
+    public function name()
+    {
+        return "MySQL";
+    }
+
+    /**
+     * @inheritDoc
+     */
+    protected function initConfig()
     {
         // Init config
         $this->config->jush = 'sql';
@@ -52,67 +79,13 @@ class Driver extends AbstractDriver
          */
         $this->config->features = ['database', 'table', 'columns', 'sql', 'indexes', 'descidx',
             'comment', 'processlist', 'variables', 'drop_col', 'kill', 'dump', 'fkeys_sql'];
-
-        $this->server = new Db\Server($this, $this->util, $this->trans);
-        $this->database = new Db\Database($this, $this->util, $this->trans);
-        $this->table = new Db\Table($this, $this->util, $this->trans);
-        $this->query = new Db\Query($this, $this->util, $this->trans);
-        $this->grammar = new Db\Grammar($this, $this->util, $this->trans);
     }
 
     /**
      * @inheritDoc
      */
-    public function name()
+    protected function postConnectConfig()
     {
-        return "MySQL";
-    }
-
-    /**
-     * Initialize a new connection
-     *
-     * @param AbstractConnection $connection
-     *
-     * @return AbstractConnection
-     */
-    private function initConnection(AbstractConnection $connection)
-    {
-        // if (!$connection->open($this->options('server'), $this->options())) {
-        //     $error = $this->error();
-        //     // windows-1250 - most common Windows encoding
-        //     if (function_exists('iconv') && !$this->util->isUtf8($error) &&
-        //         strlen($s = iconv("windows-1250", "utf-8", $error)) > strlen($error)) {
-        //         $error = $s;
-        //     }
-        //     throw new AuthException($error);
-        // }
-        return $this->connection = $connection;
-    }
-
-    /**
-     * @inheritDoc
-     * @throws AuthException
-     */
-    public function createConnection()
-    {
-        if (!$this->options('prefer_pdo', false) && extension_loaded("mysqli")) {
-            $connection = new Db\MySqli\Connection($this, $this->util, $this->trans, 'MySQLi');
-            return $this->initConnection($connection);
-        }
-        if (extension_loaded("pdo_mysql")) {
-            $connection = new Db\Pdo\Connection($this, $this->util, $this->trans, 'PDO_MySQL');
-            return $this->initConnection($connection);
-        }
-        throw new AuthException($this->trans->lang('No package installed to connect to a MySQL server.'));
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function connect(string $database, string $schema)
-    {
-        parent::connect($database, $schema);
-
         if ($this->minVersion(5)) {
             $this->config->features[] = 'routine';
             $this->config->features[] = 'trigger';
@@ -133,10 +106,32 @@ class Driver extends AbstractDriver
 
     /**
      * @inheritDoc
+     * @throws AuthException
+     */
+    protected function createConnection()
+    {
+        if (!$this->options('prefer_pdo', false) && extension_loaded("mysqli")) {
+            $connection = new Db\MySqli\Connection($this, $this->util, $this->trans, 'MySQLi');
+            return $this->connection = $connection;
+        }
+        if (extension_loaded("pdo_mysql")) {
+            $connection = new Db\Pdo\Connection($this, $this->util, $this->trans, 'PDO_MySQL');
+            return $this->connection = $connection;
+        }
+        throw new AuthException($this->trans->lang('No package installed to connect to a MySQL server.'));
+    }
+
+    /**
+     * @inheritDoc
      */
     public function error()
     {
         $error = preg_replace('~^You have an error.*syntax to use~U', 'Syntax error', parent::error());
+        // windows-1250 - most common Windows encoding
+        // if (function_exists('iconv') && !$this->util->isUtf8($error) &&
+        //     strlen($s = iconv("windows-1250", "utf-8", $error)) > strlen($error)) {
+        //     $error = $s;
+        // }
         return $this->util->html($error);
     }
 }

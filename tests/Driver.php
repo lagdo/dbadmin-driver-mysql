@@ -34,7 +34,7 @@ class Driver extends MySqlDriver
     /**
      * @inheritDoc
      */
-    public function createConnection()
+    protected function createConnection()
     {
         $this->testConnection = new Connection($this, $this->util, $this->trans, 'test');
         $this->connection = $this->testConnection;
@@ -45,13 +45,5 @@ class Driver extends MySqlDriver
         $this->grammar = new Grammar($this, $this->util, $this->trans);
 
         return $this->connection;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function connect(string $database, string $schema)
-    {
-        AbstractDriver::connect($database, $schema);
     }
 }
