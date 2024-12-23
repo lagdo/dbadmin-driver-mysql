@@ -75,7 +75,7 @@ class Connection extends AbstractConnection
     public function setCharset(string $charset)
     {
         if ($this->client->set_charset($charset)) {
-            return true;
+            return;
         }
         // the client library may not support utf8mb4
         $this->client->set_charset('utf8');
