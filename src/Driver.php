@@ -38,7 +38,7 @@ class Driver extends AbstractDriver
     /**
      * @inheritDoc
      */
-    protected function initConfig()
+    protected function beforeConnectConfig()
     {
         // Init config
         $this->config->jush = 'sql';
@@ -84,7 +84,7 @@ class Driver extends AbstractDriver
     /**
      * @inheritDoc
      */
-    protected function postConnectConfig()
+    protected function afterConnectConfig()
     {
         if ($this->minVersion(5)) {
             $this->config->features[] = 'routine';
