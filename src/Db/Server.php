@@ -184,7 +184,7 @@ class Server extends AbstractServer
     {
         $match = array_key_exists('Command', $process) && preg_match('~Query|Killed~', $process['Command']);
         if ($key == 'Info' && $match && $val != '') {
-            return '<code>' . $this->util->shortenUtf8($val, 50) . '</code>' . $this->trans->lang('Clone');
+            return '<code>' . $this->admin->shortenUtf8($val, 50) . '</code>' . $this->trans->lang('Clone');
         }
         return parent::processAttr($process, $key, $val);
     }
@@ -202,7 +202,7 @@ class Server extends AbstractServer
      */
     // public function killProcess($val)
     // {
-    //     return $this->driver->execute('KILL ' . $this->util->number($val));
+    //     return $this->driver->execute('KILL ' . $this->admin->number($val));
     // }
 
     /**
