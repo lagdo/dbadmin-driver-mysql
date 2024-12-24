@@ -173,7 +173,7 @@ class Database extends AbstractDatabase
     // public function copyTables(array $tables, array $views, string $target)
     // {
     //     $this->driver->execute("SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO'");
-    //     $overwrite = $this->admin->input()->getOverwrite();
+    //     $overwrite = $this->utils->input->getOverwrite();
     //     foreach ($tables as $table) {
     //         $name = ($target == $this->driver->database() ? $this->driver->table("copy_$table") : $this->driver->escapeId($target) . '.' . $this->driver->table($table));
     //         if (($overwrite && !$this->driver->execute("\nDROP TABLE IF EXISTS $name"))

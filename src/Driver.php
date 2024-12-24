@@ -2,29 +2,27 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql;
 
+use Lagdo\DbAdmin\Driver\Utils\Utils;
 use Lagdo\DbAdmin\Driver\Driver as AbstractDriver;
 use Lagdo\DbAdmin\Driver\Exception\AuthException;
-use Lagdo\DbAdmin\Driver\TranslatorInterface;
-use Lagdo\DbAdmin\Driver\AdminInterface;
 
 class Driver extends AbstractDriver
 {
     /**
      * The constructor
      *
-     * @param AdminInterface $admin
-     * @param TranslatorInterface $trans
+     * @param Utils $utils
      * @param array $options
      */
-    public function __construct(AdminInterface $admin, TranslatorInterface $trans, array $options)
+    public function __construct(Utils $utils, array $options)
     {
-        parent::__construct($admin, $trans, $options);
+        parent::__construct($utils, $options);
 
-        $this->server = new Db\Server($this, $this->admin, $this->trans);
-        $this->database = new Db\Database($this, $this->admin, $this->trans);
-        $this->table = new Db\Table($this, $this->admin, $this->trans);
-        $this->query = new Db\Query($this, $this->admin, $this->trans);
-        $this->grammar = new Db\Grammar($this, $this->admin, $this->trans);
+        $this->server = new Db\Server($this, $this->utils);
+        $this->database = new Db\Database($this, $this->utils);
+        $this->table = new Db\Table($this, $this->utils);
+        $this->query = new Db\Query($this, $this->utils);
+        $this->grammar = new Db\Grammar($this, $this->utils);
     }
 
     /**
@@ -99,7 +97,7 @@ class Driver extends AbstractDriver
             }
         }
         if ($this->minVersion('5.7.8', 10.2)) {
-            $this->config->structuredTypes[$this->trans->lang('Strings')][] = "json";
+            $this->config->structuredTypes[$this->utils->trans->lang('Strings')][] = "json";
             $this->config->types["json"] = 4294967295;
         }
     }
@@ -111,14 +109,14 @@ class Driver extends AbstractDriver
     protected function createConnection()
     {
         if (!$this->options('prefer_pdo', false) && extension_loaded("mysqli")) {
-            $connection = new Db\MySqli\Connection($this, $this->admin, $this->trans, 'MySQLi');
+            $connection = new Db\MySqli\Connection($this, $this->utils, 'MySQLi');
             return $this->connection = $connection;
         }
         if (extension_loaded("pdo_mysql")) {
-            $connection = new Db\Pdo\Connection($this, $this->admin, $this->trans, 'PDO_MySQL');
+            $connection = new Db\Pdo\Connection($this, $this->utils, 'PDO_MySQL');
             return $this->connection = $connection;
         }
-        throw new AuthException($this->trans->lang('No package installed to connect to a MySQL server.'));
+        throw new AuthException($this->utils->trans->lang('No package installed to connect to a MySQL server.'));
     }
 
     /**
@@ -128,10 +126,10 @@ class Driver extends AbstractDriver
     {
         $error = preg_replace('~^You have an error.*syntax to use~U', 'Syntax error', parent::error());
         // windows-1250 - most common Windows encoding
-        // if (function_exists('iconv') && !$this->admin->isUtf8($error) &&
+        // if (function_exists('iconv') && !$this->utils->str->isUtf8($error) &&
         //     strlen($s = iconv("windows-1250", "utf-8", $error)) > strlen($error)) {
         //     $error = $s;
         // }
-        return $this->admin->html($error);
+        return $this->utils->str->html($error);
     }
 }

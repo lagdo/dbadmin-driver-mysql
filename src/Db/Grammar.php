@@ -24,10 +24,9 @@ class Grammar extends AbstractGrammar
     {
         $autoIncrementIndex = " PRIMARY KEY";
         // don't overwrite primary key by auto increment
-        $query = $this->admin->input();
-        $table = $query->getTable();
-        $fields = $query->getFields();
-        $autoIncrementField = $query->getAutoIncrementField();
+        $table = $this->utils->input->getTable();
+        $fields = $this->utils->input->getFields();
+        $autoIncrementField = $this->utils->input->getAutoIncrementField();
         if ($table != "" && $autoIncrementField) {
             foreach ($this->driver->indexes($table) as $index) {
                 if (in_array($fields[$autoIncrementField]["orig"], $index->columns, true)) {
