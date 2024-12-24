@@ -83,7 +83,7 @@ trait TableFieldTrait
     public function fields(string $table)
     {
         $fields = [];
-        $rows = $this->driver->rows("SHOW FULL COLUMNS FROM " . $this->driver->table($table));
+        $rows = $this->driver->rows("SHOW FULL COLUMNS FROM " . $this->driver->escapeTableName($table));
         foreach ($rows as $row) {
             $fields[$row["Field"]] = $this->makeTableFieldEntity($row);
         }

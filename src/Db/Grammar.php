@@ -20,7 +20,7 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function autoIncrement()
+    public function getAutoIncrementModifier()
     {
         $autoIncrementIndex = " PRIMARY KEY";
         // don't overwrite primary key by auto increment
@@ -58,9 +58,9 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function sqlForCreateTable(string $table, bool $autoIncrement, string $style)
+    public function getCreateTableQuery(string $table, bool $autoIncrement, string $style)
     {
-        $query = $this->driver->result("SHOW CREATE TABLE " . $this->table($table), 1);
+        $query = $this->driver->result("SHOW CREATE TABLE " . $this->escapeTableName($table), 1);
         if (!$autoIncrement) {
             $query = preg_replace('~ AUTO_INCREMENT=\d+~', '', $query); //! skip comments
         }
@@ -70,15 +70,15 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function sqlForTruncateTable(string $table)
+    public function getTruncateTableQuery(string $table)
     {
-        return "TRUNCATE " . $this->table($table);
+        return "TRUNCATE " . $this->escapeTableName($table);
     }
 
     /**
      * @inheritDoc
      */
-    public function sqlForUseDatabase(string $database)
+    public function getUseDatabaseQuery(string $database)
     {
         return "USE " . $this->escapeId($database);
     }
@@ -86,13 +86,13 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function sqlForCreateTrigger(string $table)
+    public function getCreateTriggerQuery(string $table)
     {
         $query = "";
         foreach ($this->driver->rows("SHOW TRIGGERS LIKE " .
             $this->driver->quote(addcslashes($table, "%_\\")), null) as $row) {
             $query .= "\nCREATE TRIGGER " . $this->escapeId($row["Trigger"]) .
-                " $row[Timing] $row[Event] ON " . $this->table($row["Table"]) .
+                " $row[Timing] $row[Event] ON " . $this->escapeTableName($row["Table"]) .
                 " FOR EACH ROW\n$row[Statement];;\n";
         }
         return $query;

@@ -53,7 +53,7 @@ trait TableIndexTrait
     public function indexes(string $table)
     {
         $indexes = [];
-        foreach ($this->driver->rows('SHOW INDEX FROM ' . $this->driver->table($table)) as $row) {
+        foreach ($this->driver->rows('SHOW INDEX FROM ' . $this->driver->escapeTableName($table)) as $row) {
             $indexes[$row['Key_name']] = $this->makeTableIndex($row);
         }
         return $indexes;

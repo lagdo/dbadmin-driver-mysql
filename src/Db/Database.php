@@ -35,7 +35,7 @@ class Database extends AbstractDatabase
         $clauses = array_merge($clauses, $tableAttrs->foreign);
         $status = $this->_tableStatus($tableAttrs);
 
-        $result = $this->driver->execute('CREATE TABLE ' . $this->driver->table($tableAttrs->name) .
+        $result = $this->driver->execute('CREATE TABLE ' . $this->driver->escapeTableName($tableAttrs->name) .
             ' (' . implode(', ', $clauses) . ") $status $tableAttrs->partitioning");
         return $result !== false;
     }
@@ -58,11 +58,11 @@ class Database extends AbstractDatabase
 
         $clauses = array_merge($clauses, $tableAttrs->foreign);
         if ($tableAttrs->name !== '' && $table !== $tableAttrs->name) {
-            $clauses[] = 'RENAME TO ' . $this->driver->table($tableAttrs->name);
+            $clauses[] = 'RENAME TO ' . $this->driver->escapeTableName($tableAttrs->name);
         }
         $clauses[] = $this->_tableStatus($tableAttrs);
 
-        $result = $this->driver->execute('ALTER TABLE ' . $this->driver->table($table) . ' ' .
+        $result = $this->driver->execute('ALTER TABLE ' . $this->driver->escapeTableName($table) . ' ' .
             implode(', ', $clauses) . ' ' . $tableAttrs->partitioning);
         return $result !== false;
     }
@@ -81,7 +81,7 @@ class Database extends AbstractDatabase
                 ($index->name != '' ? $this->driver->escapeId($index->name) . ' ' : '') .
                 '(' . implode(', ', $index->columns) . ')';
         }
-        $result = $this->driver->execute('ALTER TABLE ' . $this->driver->table($table) . ' ' . implode(', ', $clauses));
+        $result = $this->driver->execute('ALTER TABLE ' . $this->driver->escapeTableName($table) . ' ' . implode(', ', $clauses));
         return $result !== false;
     }
 
@@ -113,7 +113,7 @@ class Database extends AbstractDatabase
     public function dropViews(array $views)
     {
         $this->driver->execute('DROP VIEW ' . implode(', ', array_map(function ($view) {
-            return $this->driver->table($view);
+            return $this->driver->escapeTableName($view);
         }, $views)));
         return true;
     }
@@ -124,7 +124,7 @@ class Database extends AbstractDatabase
     public function dropTables(array $tables)
     {
         $this->driver->execute('DROP TABLE ' . implode(', ', array_map(function ($table) {
-            return $this->driver->table($table);
+            return $this->driver->escapeTableName($table);
         }, $tables)));
         return true;
     }
@@ -146,12 +146,12 @@ class Database extends AbstractDatabase
         return false;
         /*$rename = [];
         foreach ($tables as $table) {
-            $rename[] = $this->driver->table($table) . ' TO ' . $this->driver->escapeId($target) . '.' . $this->driver->table($table);
+            $rename[] = $this->driver->escapeTableName($table) . ' TO ' . $this->driver->escapeId($target) . '.' . $this->driver->escapeTableName($table);
         }
         if (!$rename || $this->driver->execute('RENAME TABLE ' . implode(', ', $rename))) {
             $definitions = [];
             foreach ($views as $table) {
-                $definitions[$this->driver->table($table)] = $this->driver->view($table);
+                $definitions[$this->driver->escapeTableName($table)] = $this->driver->view($table);
             }
             // $this->connection->open($target);
             $database = $this->driver->escapeId($this->driver->database());
@@ -175,10 +175,10 @@ class Database extends AbstractDatabase
     //     $this->driver->execute("SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO'");
     //     $overwrite = $this->utils->input->getOverwrite();
     //     foreach ($tables as $table) {
-    //         $name = ($target == $this->driver->database() ? $this->driver->table("copy_$table") : $this->driver->escapeId($target) . '.' . $this->driver->table($table));
+    //         $name = ($target == $this->driver->database() ? $this->driver->escapeTableName("copy_$table") : $this->driver->escapeId($target) . '.' . $this->driver->escapeTableName($table));
     //         if (($overwrite && !$this->driver->execute("\nDROP TABLE IF EXISTS $name"))
-    //             || !$this->driver->execute("CREATE TABLE $name LIKE " . $this->driver->table($table))
-    //             || !$this->driver->execute("INSERT INTO $name SELECT * FROM " . $this->driver->table($table))
+    //             || !$this->driver->execute("CREATE TABLE $name LIKE " . $this->driver->escapeTableName($table))
+    //             || !$this->driver->execute("INSERT INTO $name SELECT * FROM " . $this->driver->escapeTableName($table))
     //         ) {
     //             return false;
     //         }
@@ -193,8 +193,8 @@ class Database extends AbstractDatabase
     //         }
     //     }
     //     foreach ($views as $table) {
-    //         $name = ($target == $this->driver->database() ? $this->driver->table("copy_$table") :
-    //             $this->driver->escapeId($target) . '.' . $this->driver->table($table));
+    //         $name = ($target == $this->driver->database() ? $this->driver->escapeTableName("copy_$table") :
+    //             $this->driver->escapeId($target) . '.' . $this->driver->escapeTableName($table));
     //         $view = $this->driver->view($table);
     //         if (($overwrite && !$this->driver->execute("DROP VIEW IF EXISTS $name"))
     //             || !$this->driver->execute("CREATE VIEW $name AS $view[select]")) { //! USE to avoid db.table

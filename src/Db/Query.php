@@ -23,7 +23,7 @@ class Query extends AbstractQuery
      */
     protected function limitToOne(string $table, string $query, string $where)
     {
-        return $this->driver->limit($query, $where, 1, 0);
+        return $this->driver->getLimitClause($query, $where, 1, 0);
     }
 
     /**
@@ -34,7 +34,7 @@ class Query extends AbstractQuery
         if (!empty($values)) {
             return parent::insert($table, $values);
         }
-        $result = $this->driver->execute('INSERT INTO ' . $this->driver->table($table) . ' () VALUES ()');
+        $result = $this->driver->execute('INSERT INTO ' . $this->driver->escapeTableName($table) . ' () VALUES ()');
         return $result !== false;
     }
 
@@ -44,7 +44,7 @@ class Query extends AbstractQuery
     public function insertOrUpdate(string $table, array $rows, array $primary)
     {
         $columns = array_keys(reset($rows));
-        $prefix = 'INSERT INTO ' . $this->driver->table($table) . ' (' . implode(', ', $columns) . ') VALUES ';
+        $prefix = 'INSERT INTO ' . $this->driver->escapeTableName($table) . ' (' . implode(', ', $columns) . ') VALUES ';
         $values = [];
         foreach ($columns as $key) {
             $values[$key] = "$key = VALUES($key)";
@@ -114,7 +114,7 @@ class Query extends AbstractQuery
             'type' => 'VIEW',
             'materialized' => false,
             'select' => preg_replace('~^(?:[^`]|`[^`]*`)*\s+AS\s+~isU', '',
-                $this->driver->result('SHOW CREATE VIEW ' . $this->driver->table($name), 1)),
+                $this->driver->result('SHOW CREATE VIEW ' . $this->driver->escapeTableName($name), 1)),
         ];
     }
 
