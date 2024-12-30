@@ -27,7 +27,7 @@ trait TableFieldTrait
             return null;
         }
         if (preg_match('~text~', $rowType)) {
-            return stripslashes(preg_replace("~^'(.*)'\$~", '\1', $row["Default"]));
+            return stripslashes(preg_replace("~^'(.*)'\$~", '\1', $row["Default"] ?? ''));
         }
         return $row["Default"];
     }
