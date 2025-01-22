@@ -30,7 +30,6 @@ class Connection extends AbstractConnection
 
         // Create the MySQLi client
         $this->client = new MySQLi();
-        $this->client->init();
 
         mysqli_report(MYSQLI_REPORT_OFF); // stays between requests, not required since PHP 5.3.4
         list($host, $port) = explode(":", $server, 2); // part after : is used for port or socket
