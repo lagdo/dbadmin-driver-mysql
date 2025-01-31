@@ -21,8 +21,8 @@ trait TableTrait
      */
     public function supportForeignKeys(TableEntity $tableStatus)
     {
-        return preg_match('~InnoDB|IBMDB2I~i', $tableStatus->engine)
-            || (preg_match('~NDB~i', $tableStatus->engine) && $this->driver->minVersion(5.6));
+        return preg_match('~InnoDB|IBMDB2I~i', $tableStatus->engine ?? '')
+            || (preg_match('~NDB~i', $tableStatus->engine ?? '') && $this->driver->minVersion(5.6));
     }
 
     /**
