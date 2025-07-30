@@ -66,9 +66,9 @@ trait TableFieldTrait
         $field->null = ($row["Null"] == "YES");
         $field->autoIncrement = ($row["Extra"] == "auto_increment");
         $field->onUpdate = $this->getRowUpdateFunction($row);
-        $field->collation = $row["Collation"];
+        $field->collation = $row["Collation"] ?? '';
         $field->privileges = array_flip(preg_split('~, *~', $row["Privileges"]));
-        $field->comment = $row["Comment"];
+        $field->comment = $row["Comment"] ?? '';
         $field->primary = ($row["Key"] == "PRI");
         // https://mariadb.com/kb/en/library/show-columns/
         // https://github.com/vrana/adminer/pull/359#pullrequestreview-276677186
