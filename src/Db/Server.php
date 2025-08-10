@@ -113,6 +113,15 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
+    public function isSystemSchema(string $database)
+    {
+        return in_array($database, ['sys', 'mysql',
+            'performance_schema', 'information_schema']);
+    }
+
+    /**
+     * @inheritDoc
+     */
     public function createDatabase(string $database, string $collation)
     {
         $result = $this->driver->execute('CREATE DATABASE ' . $this->driver->escapeId($database) .
