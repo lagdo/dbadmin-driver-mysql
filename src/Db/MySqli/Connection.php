@@ -22,18 +22,17 @@ class Connection extends AbstractConnection
     */
     public function open(string $database, string $schema = '')
     {
-        $server = $this->driver->options('server');
-        $options = $this->driver->options();
-        $username = $options['username'];
-        $password = $options['password'];
+        $server = $this->options('server');
+        $username = $this->options['username'];
+        $password = $this->options['password'];
         $socket = null;
 
         // Create the MySQLi client
         $this->client = new MySQLi();
 
         mysqli_report(MYSQLI_REPORT_OFF); // stays between requests, not required since PHP 5.3.4
-        list($host, $port) = explode(":", $server, 2); // part after : is used for port or socket
-        $ssl = $this->driver->options('ssl');
+        [$host, $port] = explode(":", $server, 2); // part after : is used for port or socket
+        $ssl = $this->options('ssl');
         if ($ssl) {
             $this->client->ssl_set($ssl['key'], $ssl['cert'], $ssl['ca'], '', '');
         }
@@ -103,7 +102,7 @@ class Connection extends AbstractConnection
             return null;
         }
         $row = $result->fetch_array();
-        return count($row) > $field ? $row[$field] : null;
+        return is_array($row) && count($row) > $field ? $row[$field] : null;
     }
 
     /**

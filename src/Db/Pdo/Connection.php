@@ -16,16 +16,15 @@ class Connection extends PdoConnection
      */
     public function open(string $database, string $schema = '')
     {
-        $server = $this->driver->options('server');
-        $options = $this->driver->options();
-        $username = $options['username'];
-        $password = $options['password'];
+        $server = $this->options('server');
+        $username = $this->options['username'];
+        $password = $this->options['password'];
         if (!$password) {
             $password = '';
         }
 
         $options = [PDO::MYSQL_ATTR_LOCAL_INFILE => false];
-        $ssl = $this->driver->options('');
+        $ssl = $this->options('ssl');
         if ($ssl) {
             if (!empty($ssl['key'])) {
                 $options[PDO::MYSQL_ATTR_SSL_KEY] = $ssl['key'];
