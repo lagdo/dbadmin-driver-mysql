@@ -108,7 +108,8 @@ class Driver extends AbstractDriver
      */
     public function createConnection(array $options)
     {
-        if (!$this->options('prefer_pdo', false) && extension_loaded("mysqli")) {
+        $preferPdo = $options['prefer_pdo'] ?? false;
+        if (!$preferPdo && extension_loaded("mysqli")) {
             $connection = new Db\MySqli\Connection($this, $this->utils, $options, 'MySQLi');
             return $this->connection = $connection;
         }
