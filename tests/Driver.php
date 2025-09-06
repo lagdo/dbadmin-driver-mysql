@@ -2,21 +2,18 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Tests;
 
-use Lagdo\DbAdmin\Driver\Utils\History;
 use Lagdo\DbAdmin\Driver\Utils\Str;
 use Lagdo\DbAdmin\Driver\Utils\Utils;
-use Lagdo\DbAdmin\Driver\Driver as AbstractDriver;
 use Lagdo\DbAdmin\Driver\Utils\Input;
 use Lagdo\DbAdmin\Driver\Fake\DriverTrait;
 use Lagdo\DbAdmin\Driver\Fake\Translator;
 use Lagdo\DbAdmin\Driver\Fake\Connection;
-
-use Lagdo\DbAdmin\Driver\MySql\Driver as MySqlDriver;
 use Lagdo\DbAdmin\Driver\MySql\Db\Server;
 use Lagdo\DbAdmin\Driver\MySql\Db\Database;
 use Lagdo\DbAdmin\Driver\MySql\Db\Table;
 use Lagdo\DbAdmin\Driver\MySql\Db\Query;
 use Lagdo\DbAdmin\Driver\MySql\Db\Grammar;
+use Lagdo\DbAdmin\Driver\MySql\Driver as MySqlDriver;
 
 class Driver extends MySqlDriver
 {
@@ -27,7 +24,7 @@ class Driver extends MySqlDriver
      */
     public function __construct()
     {
-        $utils = new Utils(new Translator(), new Input(), new Str(), new History());
+        $utils = new Utils(new Translator(), new Input(), new Str());
         parent::__construct($utils, []);
     }
 
