@@ -118,18 +118,4 @@ class Driver extends AbstractDriver
         }
         throw new AuthException($this->utils->trans->lang('No package installed to connect to a MySQL server.'));
     }
-
-    /**
-     * @inheritDoc
-     */
-    public function error()
-    {
-        $error = preg_replace('~^You have an error.*syntax to use~U', 'Syntax error', parent::error());
-        // windows-1250 - most common Windows encoding
-        // if (function_exists('iconv') && !$this->utils->str->isUtf8($error) &&
-        //     strlen($s = iconv("windows-1250", "utf-8", $error)) > strlen($error)) {
-        //     $error = $s;
-        // }
-        return $this->utils->str->html($error);
-    }
 }

@@ -3,7 +3,7 @@
 namespace Lagdo\DbAdmin\Driver\MySql\Db\MySqli;
 
 use Lagdo\DbAdmin\Driver\Db\Connection as AbstractConnection;
-
+use Lagdo\DbAdmin\Driver\MySql\Db\ConnectionTrait;
 use MySQLi;
 
 use function mysqli_report;
@@ -17,6 +17,8 @@ use function ini_get;
  */
 class Connection extends AbstractConnection
 {
+    use ConnectionTrait;
+
     /**
     * @inheritDoc
     */
@@ -129,7 +131,7 @@ class Connection extends AbstractConnection
         $result = $this->client->store_result();
         if (!$result) { // The resultset is empty
             // Error or no result
-            $this->driver->setError($this->client->error);
+            $this->setError($this->client->error);
             $this->setAffectedRows($this->client->affected_rows);
             return $this->client->error === '';
         }
@@ -141,7 +143,7 @@ class Connection extends AbstractConnection
      */
     public function nextResult()
     {
-        $this->driver->setError();
+        $this->setError();
         $this->setAffectedRows(0);
         return $this->client->next_result();
     }

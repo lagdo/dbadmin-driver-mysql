@@ -3,6 +3,7 @@
 namespace Lagdo\DbAdmin\Driver\MySql\Db\Pdo;
 
 use Lagdo\DbAdmin\Driver\Db\Pdo\Connection as PdoConnection;
+use Lagdo\DbAdmin\Driver\MySql\Db\ConnectionTrait;
 
 use PDO;
 
@@ -11,6 +12,8 @@ use PDO;
  */
 class Connection extends PdoConnection
 {
+    use ConnectionTrait;
+
     /**
      * @inheritDoc
      */
