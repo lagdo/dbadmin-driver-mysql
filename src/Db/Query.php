@@ -129,15 +129,6 @@ class Query extends AbstractQuery
     /**
      * @inheritDoc
      */
-    public function explain(ConnectionInterface $connection, string $query)
-    {
-        return $connection->query('EXPLAIN ' . ($this->driver->minVersion(5.1) &&
-            !$this->driver->minVersion(5.7) ? 'PARTITIONS ' : '') . $query);
-    }
-
-    /**
-     * @inheritDoc
-     */
     public function countRows(TableEntity $tableStatus, array $where)
     {
         return (!empty($where) || $tableStatus->engine != 'InnoDB' ? null : count($tableStatus->rows));

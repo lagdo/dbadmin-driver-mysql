@@ -19,4 +19,13 @@ trait ConnectionTrait
         // }
         return $this->utils->str->html($error);
     }
+
+    /**
+     * @inheritDoc
+     */
+    public function explain(string $query)
+    {
+        return $this->query('EXPLAIN ' . ($this->driver->minVersion(5.1) &&
+            !$this->driver->minVersion(5.7) ? 'PARTITIONS ' : '') . $query);
+    }
 }
