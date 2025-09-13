@@ -94,22 +94,6 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    public function result(string $query, int $field = -1)
-    {
-        if ($field < 0) {
-            $field = $this->defaultField();
-        }
-        $result = $this->client->query($query);
-        if (!$result) {
-            return null;
-        }
-        $row = $result->fetch_array();
-        return is_array($row) && count($row) > $field ? $row[$field] : null;
-    }
-
-    /**
-     * @inheritDoc
-     */
     public function quote(string $string)
     {
         return "'" . $this->client->escape_string($string) . "'";

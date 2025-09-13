@@ -84,6 +84,8 @@ class Driver extends AbstractDriver
      */
     protected function afterConnection()
     {
+        $this->server->setConnection($this->connection);
+
         if ($this->minVersion(5)) {
             $this->config->features[] = 'routine';
             $this->config->features[] = 'trigger';
