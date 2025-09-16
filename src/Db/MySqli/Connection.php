@@ -22,7 +22,7 @@ class Connection extends AbstractConnection
     /**
     * @inheritDoc
     */
-    public function open(string $database, string $schema = '')
+    public function open(string $database, string $schema = ''): bool
     {
         $server = $this->options('server');
         $username = $this->options['username'];
@@ -72,7 +72,7 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    public function setCharset(string $charset)
+    protected function setCharset(string $charset)
     {
         if ($this->client->set_charset($charset)) {
             return;

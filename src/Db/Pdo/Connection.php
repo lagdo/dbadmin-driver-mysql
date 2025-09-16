@@ -17,7 +17,7 @@ class Connection extends PdoConnection
     /**
      * @inheritDoc
      */
-    public function open(string $database, string $schema = '')
+    public function open(string $database, string $schema = ''): bool
     {
         $server = $this->options('server');
         $username = $this->options['username'];
@@ -54,7 +54,7 @@ class Connection extends PdoConnection
     /**
      * @inheritDoc
      */
-    public function setCharset(string $charset)
+    protected function setCharset(string $charset)
     {
         $this->query("SET NAMES $charset"); // charset in DSN is ignored before PHP 5.3.6
     }

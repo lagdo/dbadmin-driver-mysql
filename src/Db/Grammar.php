@@ -2,17 +2,22 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Db;
 
+use Lagdo\DbAdmin\Driver\Db\Grammar as AbstractGrammar;
 use Lagdo\DbAdmin\Driver\Entity\TableFieldEntity;
 use Lagdo\DbAdmin\Driver\Entity\TableSelectEntity;
 
-use Lagdo\DbAdmin\Driver\Db\Grammar as AbstractGrammar;
+use function count;
+use function in_array;
+use function preg_match;
+use function preg_replace;
+use function str_replace;
 
 class Grammar extends AbstractGrammar
 {
     /**
      * @inheritDoc
      */
-    public function escapeId(string $idf)
+    public function escapeId(string $idf): string
     {
         return "`" . str_replace("`", "``", $idf) . "`";
     }
@@ -90,7 +95,7 @@ class Grammar extends AbstractGrammar
     {
         $query = "";
         foreach ($this->driver->rows("SHOW TRIGGERS LIKE " .
-            $this->driver->quote(addcslashes($table, "%_\\")), null) as $row) {
+            $this->driver->quote(addcslashes($table, "%_\\"))) as $row) {
             $query .= "\nCREATE TRIGGER " . $this->escapeId($row["Trigger"]) .
                 " $row[Timing] $row[Event] ON " . $this->escapeTableName($row["Table"]) .
                 " FOR EACH ROW\n$row[Statement];;\n";
@@ -127,7 +132,8 @@ class Grammar extends AbstractGrammar
             $value = "CONV($value, 2, 10) + 0";
         }
         if (preg_match("~geometry|point|linestring|polygon~", $field->type)) {
-            $value = ($this->driver->minVersion(8) ? "ST_" : "") . "GeomFromText($value, SRID($field[field]))";
+            $value = ($this->driver->minVersion(8) ? "ST_" : "") .
+                "GeomFromText($value, SRID({$field->name}))";
         }
         return $value;
     }
@@ -135,15 +141,7 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    // public function connectionId()
-    // {
-    //     return "SELECT CONNECTION_ID()";
-    // }
-
-    /**
-     * @inheritDoc
-     */
-    protected function queryRegex()
+    public function queryRegex()
     {
         return '\\s*|[\'"`#]|/\*|-- |$';
     }

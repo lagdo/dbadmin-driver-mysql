@@ -82,10 +82,8 @@ class Driver extends AbstractDriver
     /**
      * @inheritDoc
      */
-    protected function afterConnection()
+    protected function configConnection()
     {
-        $this->server->setConnection($this->connection);
-
         if ($this->minVersion(5)) {
             $this->config->features[] = 'routine';
             $this->config->features[] = 'trigger';
@@ -102,6 +100,14 @@ class Driver extends AbstractDriver
             $this->config->structuredTypes[$this->utils->trans->lang('Strings')][] = "json";
             $this->config->types["json"] = 4294967295;
         }
+    }
+
+    /**
+     * @inheritDoc
+     */
+    protected function openedConnection()
+    {
+        $this->server->setConnection($this->connection);
     }
 
     /**
