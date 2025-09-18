@@ -118,12 +118,10 @@ class Driver extends AbstractDriver
     {
         $preferPdo = $options['prefer_pdo'] ?? false;
         if (!$preferPdo && extension_loaded("mysqli")) {
-            $connection = new Db\MySqli\Connection($this, $this->utils, $options, 'MySQLi');
-            return $this->connection = $connection;
+            return new Db\MySqli\Connection($this, $this->utils, $options, 'MySQLi');
         }
         if (extension_loaded("pdo_mysql")) {
-            $connection = new Db\Pdo\Connection($this, $this->utils, $options, 'PDO_MySQL');
-            return $this->connection = $connection;
+            return new Db\Pdo\Connection($this, $this->utils, $options, 'PDO_MySQL');
         }
         throw new AuthException($this->utils->trans->lang('No package installed to connect to a MySQL server.'));
     }
