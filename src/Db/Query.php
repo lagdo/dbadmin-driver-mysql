@@ -99,14 +99,6 @@ class Query extends AbstractQuery
     /**
      * @inheritDoc
      */
-    public function user()
-    {
-        return $this->driver->result('SELECT USER()');
-    }
-
-    /**
-     * @inheritDoc
-     */
     public function view(string $name)
     {
         return [

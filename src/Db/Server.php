@@ -15,6 +15,14 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
+    public function user()
+    {
+        return $this->driver->result('SELECT USER()');
+    }
+
+    /**
+     * @inheritDoc
+     */
     public function databases(bool $flush)
     {
         // !!! Caching and slow query handling are temporarily disabled !!!
