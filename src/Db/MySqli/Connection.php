@@ -3,14 +3,16 @@
 namespace Lagdo\DbAdmin\Driver\MySql\Db\MySqli;
 
 use Lagdo\DbAdmin\Driver\Db\Connection as AbstractConnection;
+use Lagdo\DbAdmin\Driver\Db\PreparedStatement;
+use Lagdo\DbAdmin\Driver\Db\StatementInterface;
 use Lagdo\DbAdmin\Driver\MySql\Db\ConnectionTrait;
 use MySQLi;
 
-use function mysqli_report;
 use function explode;
-use function is_numeric;
-use function intval;
 use function ini_get;
+use function intval;
+use function is_numeric;
+use function mysqli_report;
 
 /**
  * MySQL driver to be used with the mysqli PHP extension.
@@ -66,7 +68,7 @@ class Connection extends AbstractConnection
      */
     public function serverInfo()
     {
-        return $this->client->server_info;
+        return $this->client?->server_info ?? '';
     }
 
     /**
@@ -88,7 +90,7 @@ class Connection extends AbstractConnection
     public function query(string $query, bool $unbuffered = false)
     {
         $result = $this->client->query($query, $unbuffered);
-        return ($result) ? new Statement($result) : false;
+        return !$result ? false : new Statement($result);
     }
 
     /**
@@ -130,5 +132,36 @@ class Connection extends AbstractConnection
         $this->setError();
         $this->setAffectedRows(0);
         return $this->client->next_result();
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function prepareStatement(string $query): PreparedStatement
+    {
+        // MySQLi uses the '?' char as placeholder for query params.
+        [$params, $query] = $this->getPreparedParams($query, '?');
+        $statement = $this->client->prepare($query);
+        return new PreparedStatement($query, $statement, $params);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function executeStatement(PreparedStatement $statement,
+        array $values): ?StatementInterface
+    {
+        if (!$statement->prepared()) {
+            return null;
+        }
+
+        $values = $statement->paramValues($values, false);
+        $result = $statement->statement()->execute($values);
+        if (!$result) {
+            $this->setError($this->client->error);
+            return null;
+        }
+
+        return new Statement($statement->statement()->get_result());
     }
 }
