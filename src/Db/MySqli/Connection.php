@@ -140,7 +140,7 @@ class Connection extends AbstractConnection
     public function prepareStatement(string $query): PreparedStatement
     {
         // MySQLi uses the '?' char as placeholder for query params.
-        [$params, $query] = $this->getPreparedParams($query, '?');
+        [$params, $query] = $this->getPreparedParams($query, fn() => '?');
         $statement = $this->client->prepare($query);
         return new PreparedStatement($query, $statement, $params);
     }
