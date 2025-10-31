@@ -21,6 +21,7 @@ class Table extends AbstractTable
      */
     private function queryStatus(bool $fast, string $table = '')
     {
+        // Todo: use match
         $query = ($fast && $this->driver->minVersion(5)) ?
             "SELECT TABLE_NAME AS Name, ENGINE AS Engine, TABLE_COMMENT AS Comment " .
             "FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() " .
