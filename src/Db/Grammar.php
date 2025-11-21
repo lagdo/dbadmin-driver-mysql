@@ -65,7 +65,8 @@ class Grammar extends AbstractGrammar
      */
     public function getCreateTableQuery(string $table, bool $autoIncrement, string $style)
     {
-        $query = $this->driver->result("SHOW CREATE TABLE " . $this->escapeTableName($table), 1);
+        $query = $this->driver->result("SHOW CREATE TABLE " .
+            $this->driver->escapeTableName($table), 1);
         if (!$autoIncrement) {
             $query = preg_replace('~ AUTO_INCREMENT=\d+~', '', $query); //! skip comments
         }
@@ -77,7 +78,7 @@ class Grammar extends AbstractGrammar
      */
     public function getTruncateTableQuery(string $table)
     {
-        return "TRUNCATE " . $this->escapeTableName($table);
+        return "TRUNCATE " . $this->driver->escapeTableName($table);
     }
 
     /**
@@ -97,7 +98,7 @@ class Grammar extends AbstractGrammar
         foreach ($this->driver->rows("SHOW TRIGGERS LIKE " .
             $this->driver->quote(addcslashes($table, "%_\\"))) as $row) {
             $query .= "\nCREATE TRIGGER " . $this->escapeId($row["Trigger"]) .
-                " $row[Timing] $row[Event] ON " . $this->escapeTableName($row["Table"]) .
+                " $row[Timing] $row[Event] ON " . $this->driver->escapeTableName($row["Table"]) .
                 " FOR EACH ROW\n$row[Statement];;\n";
         }
         return $query;
