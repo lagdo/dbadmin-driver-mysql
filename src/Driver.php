@@ -70,13 +70,11 @@ class Driver extends AbstractDriver
             "time" => "addtime/subtime",
             "char|text" => "concat",
         ]];
-        /**
-         * Features not available
-         *
-         * @var array
-         */
-        $this->config->features = ['database', 'table', 'columns', 'sql', 'indexes', 'descidx',
-            'comment', 'processlist', 'variables', 'drop_col', 'kill', 'dump', 'fkeys_sql'];
+
+        // Features always available
+        $this->config->features = ['comment', 'columns', 'copy', 'database', 'drop_col',
+            'dump', 'indexes', 'kill', 'privileges', 'move_col', 'procedure', 'processlist',
+            'routine', 'sql', 'status', 'table', 'trigger', 'variables', 'view'];
     }
 
     /**
@@ -84,21 +82,32 @@ class Driver extends AbstractDriver
      */
     protected function configConnection()
     {
-        if ($this->minVersion(5)) {
-            $this->config->features[] = 'routine';
-            $this->config->features[] = 'trigger';
-            $this->config->features[] = 'view';
-            if ($this->minVersion(5.1)) {
-                $this->config->features[] = 'event';
-                $this->config->features[] = 'partitioning';
-            }
-            if ($this->minVersion(8)) {
-                $this->config->features[] = 'descidx';
-            }
+        if ($this->minVersion(5.1)) {
+            $this->config->features[] = 'event';
         }
+        if ($this->minVersion(8)) {
+            $this->config->features[] = 'descidx';
+        }
+        if ($this->minVersion('8.0.16', '10.2.1')) {
+            $this->config->features[] = 'check';
+        }
+
         if ($this->minVersion('5.7.8', 10.2)) {
-            $this->config->structuredTypes[$this->utils->trans->lang('Strings')][] = "json";
-            $this->config->types["json"] = 4294967295;
+            $this->config->types[$this->utils->trans->lang('Strings')]["json"] = 4294967295;
+        }
+        if ($this->minVersion('', 10.7)) {
+            $this->config->types[$this->utils->trans->lang('Strings')]["uuid"] = 128;
+            $this->config->editFunctions[0]['uuid'] = 'uuid';
+        }
+        if ($this->minVersion(9, '')) {
+            $this->config->types[$this->utils->trans->lang('Numbers')]["vector"] = 16383;
+            $this->config->editFunctions[0]['vector'] = 'string_to_vector';
+        }
+        if ($this->minVersion(5.1, '')) {
+            $this->config->partitionBy = ["HASH", "LINEAR HASH", "KEY", "LINEAR KEY", "RANGE", "LIST"];
+        }
+        if ($this->minVersion(5.7, 10.2)) {
+            $this->config->generated = ["STORED", "VIRTUAL"];
         }
     }
 

@@ -3,6 +3,7 @@
 namespace Lagdo\DbAdmin\Driver\MySql\Db\Traits;
 
 use Lagdo\DbAdmin\Driver\Entity\ForeignKeyEntity;
+use Lagdo\DbAdmin\Driver\Entity\PartitionEntity;
 use Lagdo\DbAdmin\Driver\Entity\TableEntity;
 use Lagdo\DbAdmin\Driver\Entity\TableFieldEntity;
 
@@ -22,7 +23,8 @@ trait TableTrait
     public function supportForeignKeys(TableEntity $tableStatus)
     {
         return preg_match('~InnoDB|IBMDB2I~i', $tableStatus->engine ?? '')
-            || (preg_match('~NDB~i', $tableStatus->engine ?? '') && $this->driver->minVersion(5.6));
+            || (preg_match('~NDB~i', $tableStatus->engine ?? '')
+            && $this->driver->minVersion(5.6));
     }
 
     /**
@@ -97,7 +99,8 @@ trait TableTrait
         static $pattern = '(?:`(?:[^`]|``)+`|"(?:[^"]|"")+")';
         $foreignKeys = [];
         $onActions = $this->driver->actions();
-        $createTable = $this->driver->result("SHOW CREATE TABLE " . $this->driver->escapeTableName($table), 1);
+        $createTable = $this->driver->result("SHOW CREATE TABLE " .
+            $this->driver->escapeTableName($table), 1);
         if ($createTable) {
             preg_match_all("~CONSTRAINT ($pattern) FOREIGN KEY ?\\(((?:$pattern,? ?)+)\\) REFERENCES " .
                 "($pattern)(?:\\.($pattern))? \\(((?:$pattern,? ?)+)\\)(?: ON DELETE ($onActions))" .
@@ -108,5 +111,50 @@ trait TableTrait
             }
         }
         return $foreignKeys;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function checkConstraints(TableEntity $status): array
+    {
+        // From driver.inc.php
+        $database = $this->driver->quote($this->driver->database());
+        $table = $this->driver->quote($status->name);
+        // MariaDB contains CHECK_CONSTRAINTS.TABLE_NAME, MySQL and PostrgreSQL not
+        $query = "SELECT c.CONSTRAINT_NAME, CHECK_CLAUSE
+FROM INFORMATION_SCHEMA.CHECK_CONSTRAINTS c JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS t
+ON c.CONSTRAINT_SCHEMA = t.CONSTRAINT_SCHEMA AND c.CONSTRAINT_NAME = t.CONSTRAINT_NAME
+WHERE c.CONSTRAINT_SCHEMA = $database AND t.TABLE_NAME = $table
+AND CHECK_CLAUSE NOT LIKE '% IS NOT NULL'";
+        return $this->driver->keyValues($query); // ignore default IS NOT NULL checks in PostrgreSQL
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function partitionsInfo(string $table): PartitionEntity|null
+    {
+        $database = $this->driver->quote($this->driver->database());
+        $tableName = $this->driver->quote($table);
+        $from = "FROM information_schema.PARTITIONS WHERE TABLE_SCHEMA = $database AND TABLE_NAME = $tableName";
+        $query = "SELECT PARTITION_METHOD, PARTITION_EXPRESSION, PARTITION_ORDINAL_POSITION $from
+ORDER BY PARTITION_ORDINAL_POSITION DESC LIMIT 1";
+        $result = $this->driver->execute($query)?->fetchRow();
+        if (!$result) {
+            return null;
+        }
+
+        [$fields, $strategy, $partitions] = $result;
+        $entity = new PartitionEntity($strategy, $fields);
+        $entity->partitions = $partitions;
+
+        $query = "SELECT PARTITION_NAME, PARTITION_DESCRIPTION $from
+AND PARTITION_NAME != '' ORDER BY PARTITION_ORDINAL_POSITION";
+        $partition = $this->driver->keyValues($query);
+        $entity->names = array_keys($partition);
+        $entity->values = array_values($partition);
+
+        return $entity;
     }
 }

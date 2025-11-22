@@ -82,11 +82,33 @@ class Grammar extends AbstractGrammar
     }
 
     /**
+     * @param string $database
+     * @param string $style
+     *
+     * @return string
+     */
+    private function getCreateDatabaseQuery(string $database, string $style = ''): string
+    {
+        if (!preg_match('~CREATE~', $style)) {
+            return '';
+        }
+        $create = $this->driver->result("SHOW CREATE DATABASE $database", 1);
+        if (!$create) {
+            return '';
+        }
+
+        $this->driver->setUtf8mb4($create);
+        $drop = $style !== 'DROP+CREATE' ? '' : "DROP DATABASE IF EXISTS $database;\n";
+        return "{$drop}{$create};\n";
+    }
+
+    /**
      * @inheritDoc
      */
-    public function getUseDatabaseQuery(string $database)
+    public function getUseDatabaseQuery(string $database, string $style = '')
     {
-        return "USE " . $this->escapeId($database);
+        $name = $this->escapeId($database);
+        return $this->getCreateDatabaseQuery($name, $style) . "USE $name;";
     }
 
     /**
