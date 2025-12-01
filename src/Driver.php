@@ -6,6 +6,8 @@ use Lagdo\DbAdmin\Driver\Utils\Utils;
 use Lagdo\DbAdmin\Driver\Driver as AbstractDriver;
 use Lagdo\DbAdmin\Driver\Exception\AuthException;
 
+use function extension_loaded;
+
 class Driver extends AbstractDriver
 {
     /**
@@ -60,17 +62,17 @@ class Driver extends AbstractDriver
         $this->config->functions = ["char_length", "date", "from_unixtime", "lower",
             "round", "floor", "ceil", "sec_to_time", "time_to_sec", "upper"];
         $this->config->grouping = ["avg", "count", "count distinct", "group_concat", "max", "min", "sum"];
-        $this->config->editFunctions = [[
+        $this->config->insertFunctions = [
             "char" => "md5/sha1/password/encrypt/uuid",
             "binary" => "md5/sha1",
             "date|time" => "now",
-        ],[
+        ];
+        $this->config->editFunctions = [
             $this->numberRegex() => "+/-",
             "date" => "+ interval/- interval",
             "time" => "addtime/subtime",
             "char|text" => "concat",
-        ]];
-
+        ];
         // Features always available
         $this->config->features = ['comment', 'columns', 'copy', 'database', 'drop_col',
             'dump', 'indexes', 'kill', 'privileges', 'move_col', 'procedure', 'processlist',
@@ -93,15 +95,15 @@ class Driver extends AbstractDriver
         }
 
         if ($this->minVersion('5.7.8', 10.2)) {
-            $this->config->types[$this->utils->trans->lang('Strings')]["json"] = 4294967295;
+            $this->config->setTypes(['Strings' => ["json" => 4294967295]]);
         }
         if ($this->minVersion('', 10.7)) {
-            $this->config->types[$this->utils->trans->lang('Strings')]["uuid"] = 128;
-            $this->config->editFunctions[0]['uuid'] = 'uuid';
+            $this->config->setTypes(['Strings' => ["uuid" => 128]]);
+            $this->config->insertFunctions['uuid'] = 'uuid';
         }
         if ($this->minVersion(9, '')) {
-            $this->config->types[$this->utils->trans->lang('Numbers')]["vector"] = 16383;
-            $this->config->editFunctions[0]['vector'] = 'string_to_vector';
+            $this->config->setTypes(['Numbers' => ["vecto" => 16383]]);
+            $this->config->insertFunctions['vector'] = 'string_to_vector';
         }
         if ($this->minVersion(5.1, '')) {
             $this->config->partitionBy = ["HASH", "LINEAR HASH", "KEY", "LINEAR KEY", "RANGE", "LIST"];
