@@ -2,6 +2,8 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Db;
 
+use Lagdo\DbAdmin\Driver\Db\StatementInterface;
+
 use function preg_replace;
 
 trait ConnectionTrait
@@ -23,7 +25,7 @@ trait ConnectionTrait
     /**
      * @inheritDoc
      */
-    public function explain(string $query)
+    public function explain(string $query): StatementInterface|bool
     {
         return $this->query('EXPLAIN ' . ($this->driver->minVersion(5.1) &&
             !$this->driver->minVersion(5.7) ? 'PARTITIONS ' : '') . $query);

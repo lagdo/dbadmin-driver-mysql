@@ -14,13 +14,13 @@ use function preg_match_all;
 
 trait TableTrait
 {
-    abstract public function tableStatuses(bool $fast = false);
-    abstract public function fields(string $table);
+    abstract public function tableStatuses(bool $fast = false): array;
+    abstract public function fields(string $table): array;
 
     /**
      * @inheritDoc
      */
-    public function supportForeignKeys(TableEntity $tableStatus)
+    public function supportForeignKeys(TableEntity $tableStatus): bool
     {
         return preg_match('~InnoDB|IBMDB2I~i', $tableStatus->engine ?? '')
             || (preg_match('~NDB~i', $tableStatus->engine ?? '')
@@ -50,7 +50,7 @@ trait TableTrait
     /**
      * @inheritDoc
      */
-    public function referencableTables(string $table)
+    public function referencableTables(string $table): array
     {
         $fields = []; // table_name => [field]
         foreach ($this->tableStatuses(true) as $tableName => $tableStatus) {
@@ -94,7 +94,7 @@ trait TableTrait
     /**
      * @inheritDoc
      */
-    public function foreignKeys(string $table)
+    public function foreignKeys(string $table): array
     {
         static $pattern = '(?:`(?:[^`]|``)+`|"(?:[^"]|"")+")';
         $foreignKeys = [];

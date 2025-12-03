@@ -2,6 +2,7 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Tests;
 
+use Lagdo\DbAdmin\Driver\Db\ConnectionInterface;
 use Lagdo\DbAdmin\Driver\Utils\Str;
 use Lagdo\DbAdmin\Driver\Utils\Utils;
 use Lagdo\DbAdmin\Driver\Utils\Input;
@@ -31,7 +32,7 @@ class Driver extends MySqlDriver
     /**
      * @inheritDoc
      */
-    public function createConnection(array $options)
+    public function createConnection(array $options): ConnectionInterface|null
     {
         $this->testConnection = new Connection($this, $this->utils, $options, 'test');
         $this->connection = $this->testConnection;

@@ -26,7 +26,7 @@ class Query extends AbstractQuery
     /**
      * @inheritDoc
      */
-    public function insert(string $table, array $values)
+    public function insert(string $table, array $values): bool
     {
         if (!empty($values)) {
             return parent::insert($table, $values);
@@ -38,7 +38,7 @@ class Query extends AbstractQuery
     /**
      * @inheritDoc
      */
-    public function insertOrUpdate(string $table, array $rows, array $primary)
+    public function insertOrUpdate(string $table, array $rows, array $primary): bool
     {
         $columns = array_keys(reset($rows));
         $prefix = 'INSERT INTO ' . $this->driver->escapeTableName($table) . ' (' . implode(', ', $columns) . ') VALUES ';
@@ -69,7 +69,7 @@ class Query extends AbstractQuery
     /**
      * @inheritDoc
      */
-    public function slowQuery(string $query, int $timeout)
+    public function slowQuery(string $query, int $timeout): string|null
     {
         // $this->connection->timeout = $timeout;
         if ($this->driver->minVersion('5.7.8', '10.1.2')) {
@@ -85,10 +85,11 @@ class Query extends AbstractQuery
     /**
      * @inheritDoc
      */
-    public function convertSearch(string $idf, array $val, TableFieldEntity $field)
+    public function convertSearch(string $idf, array $value, TableFieldEntity $field): string
     {
         return (preg_match('~char|text|enum|set~', $field->type) &&
-            !preg_match('~^utf8~', $field->collation) && preg_match('~[\x80-\xFF]~', $val['val']) ?
+            !preg_match('~^utf8~', $field->collation) &&
+            preg_match('~[\x80-\xFF]~', $value['val']) ?
             "CONVERT($idf USING " . $this->driver->charset() . ')' : $idf
         );
     }
@@ -96,7 +97,7 @@ class Query extends AbstractQuery
     /**
      * @inheritDoc
      */
-    public function view(string $name)
+    public function view(string $name): array
     {
         return [
             'name' => $name,
@@ -110,7 +111,7 @@ class Query extends AbstractQuery
     /**
      * @inheritDoc
      */
-    public function lastAutoIncrementId()
+    public function lastAutoIncrementId(): string
     {
         return $this->driver->result('SELECT LAST_INSERT_ID()'); // mysql_insert_id() truncates bigint
     }
@@ -118,7 +119,7 @@ class Query extends AbstractQuery
     /**
      * @inheritDoc
      */
-    public function countRows(TableEntity $tableStatus, array $where)
+    public function countRows(TableEntity $tableStatus, array $where): int|null
     {
         return (!empty($where) || $tableStatus->engine != 'InnoDB' ? null : count($tableStatus->rows));
     }

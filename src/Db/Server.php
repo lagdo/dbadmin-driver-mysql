@@ -15,7 +15,7 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
-    public function user()
+    public function user(): string
     {
         return $this->driver->result('SELECT USER()');
     }
@@ -23,7 +23,7 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
-    public function databases(bool $flush)
+    public function databases(bool $flush): array
     {
         // !!! Caching and slow query handling are temporarily disabled !!!
         $query = $this->driver->minVersion(5) ?
@@ -49,7 +49,7 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
-    public function databaseSize(string $database)
+    public function databaseSize(string $database): int
     {
         $statement = $this->driver->execute('SELECT SUM(data_length + index_length) ' .
             'FROM information_schema.tables where table_schema=' . $this->driver->quote($database));
@@ -62,7 +62,7 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
-    public function databaseCollation(string $database, array $collations)
+    public function databaseCollation(string $database, array $collations): string
     {
         $collation = null;
         $create = $this->driver->result('SHOW CREATE DATABASE ' . $this->driver->escapeId($database), 1);
@@ -78,7 +78,7 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
-    public function engines()
+    public function engines(): array
     {
         $engines = [];
         foreach ($this->driver->rows('SHOW ENGINES') as $row) {
@@ -92,7 +92,7 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
-    public function collations()
+    public function collations(): array
     {
         $collations = [];
         foreach ($this->driver->rows('SHOW COLLATION') as $row) {
@@ -112,7 +112,7 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
-    public function isInformationSchema(string $database)
+    public function isInformationSchema(string $database): bool
     {
         return ($this->driver->minVersion(5) && $database == 'information_schema') ||
             ($this->driver->minVersion(5.5) && $database == 'performance_schema');
@@ -121,7 +121,7 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
-    public function isSystemSchema(string $database)
+    public function isSystemSchema(string $database): bool
     {
         return in_array($database, ['sys', 'mysql',
             'performance_schema', 'information_schema']);
@@ -130,7 +130,7 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
-    public function createDatabase(string $database, string $collation)
+    public function createDatabase(string $database, string $collation): bool
     {
         $result = $this->driver->execute('CREATE DATABASE ' . $this->driver->escapeId($database) .
             ($collation ? ' COLLATE ' . $this->driver->quote($collation) : ''));
@@ -140,7 +140,7 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
-    public function dropDatabase(string $database)
+    public function dropDatabase(string $database): bool
     {
         $result = $this->driver->execute('DROP DATABASE ' . $this->driver->escapeId($database));
         return $result !== false;
@@ -149,7 +149,7 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
-    public function renameDatabase(string $name, string $collation)
+    public function renameDatabase(string $name, string $collation): bool
     {
         // The feature is not natively provided by latest MySQL versions, thus it is disabled here.
         return false;
@@ -173,7 +173,7 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
-    public function routineLanguages()
+    public function routineLanguages(): array
     {
         return []; // 'SQL' not required
     }
@@ -181,7 +181,7 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
-    public function variables()
+    public function variables(): array
     {
         return $this->driver->keyValues('SHOW VARIABLES');
     }
@@ -189,7 +189,7 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
-    public function processes()
+    public function processes(): array
     {
         return $this->driver->rows('SHOW FULL PROCESSLIST');
     }
@@ -209,7 +209,7 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
-    public function statusVariables()
+    public function statusVariables(): array
     {
         return $this->driver->keyValues('SHOW STATUS');
     }
@@ -217,7 +217,7 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
-    // public function killProcess($val)
+    // public function killProcess($val): bool
     // {
     //     return $this->driver->execute('KILL ' . $this->utils->str->number($val));
     // }
@@ -225,7 +225,7 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
-    // public function maxConnections()
+    // public function maxConnections(): int
     // {
     //     return $this->driver->result('SELECT @@max_connections');
     // }

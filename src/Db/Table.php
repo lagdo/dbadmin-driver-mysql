@@ -53,7 +53,7 @@ class Table extends AbstractTable
     /**
      * @inheritDoc
      */
-    public function tableStatus(string $table, bool $fast = false)
+    public function tableStatus(string $table, bool $fast = false): TableEntity|null
     {
         $rows = $this->queryStatus($fast, $table);
         if (!($row = reset($rows))) {
@@ -65,7 +65,7 @@ class Table extends AbstractTable
     /**
      * @inheritDoc
      */
-    public function tableStatuses(bool $fast = false)
+    public function tableStatuses(bool $fast = false): array
     {
         $tables = [];
         $rows = $this->queryStatus($fast);
@@ -78,7 +78,7 @@ class Table extends AbstractTable
     /**
      * @inheritDoc
      */
-    public function tableNames()
+    public function tableNames(): array
     {
         $tables = [];
         $rows = $this->queryStatus(true);
@@ -91,7 +91,7 @@ class Table extends AbstractTable
     /**
      * @inheritDoc
      */
-    public function isView(TableEntity $tableStatus)
+    public function isView(TableEntity $tableStatus): bool
     {
         return $tableStatus->engine === null;
     }
@@ -99,7 +99,7 @@ class Table extends AbstractTable
     /**
      * @inheritDoc
      */
-    public function trigger(string $name, string $table = '')
+    public function trigger(string $name, string $table = ''): TriggerEntity|null
     {
         if ($name == "") {
             return null;
@@ -114,7 +114,7 @@ class Table extends AbstractTable
     /**
      * @inheritDoc
      */
-    public function triggers(string $table)
+    public function triggers(string $table): array
     {
         $triggers = [];
         foreach ($this->driver->rows("SHOW TRIGGERS LIKE " . $this->driver->quote(addcslashes($table, "%_\\"))) as $row) {
@@ -126,7 +126,7 @@ class Table extends AbstractTable
     /**
      * @inheritDoc
      */
-    public function triggerOptions()
+    public function triggerOptions(): array
     {
         return [
             "Timing" => ["BEFORE", "AFTER"],
@@ -138,7 +138,7 @@ class Table extends AbstractTable
     /**
      * @inheritDoc
      */
-    public function tableHelp(string $name)
+    public function tableHelp(string $name): string
     {
         $maria = preg_match('~MariaDB~', $this->driver->serverInfo());
         if ($this->driver->isInformationSchema($this->driver->database())) {

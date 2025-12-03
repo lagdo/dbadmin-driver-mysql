@@ -3,6 +3,7 @@
 namespace Lagdo\DbAdmin\Driver\MySql\Db\Pdo;
 
 use Lagdo\DbAdmin\Driver\Db\Pdo\Connection as PdoConnection;
+use Lagdo\DbAdmin\Driver\Db\StatementInterface;
 use Lagdo\DbAdmin\Driver\MySql\Db\ConnectionTrait;
 
 use PDO;
@@ -62,7 +63,7 @@ class Connection extends PdoConnection
     /**
      * @inheritDoc
      */
-    public function query(string $query, bool $unbuffered = false)
+    public function query(string $query, bool $unbuffered = false): StatementInterface|bool
     {
         $this->client->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, !$unbuffered);
         return parent::query($query, $unbuffered);

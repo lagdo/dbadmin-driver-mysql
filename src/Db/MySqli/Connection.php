@@ -66,7 +66,7 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    public function serverInfo()
+    public function serverInfo(): string
     {
         return $this->client?->server_info ?? '';
     }
@@ -87,7 +87,7 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    public function query(string $query, bool $unbuffered = false)
+    public function query(string $query, bool $unbuffered = false): StatementInterface|bool
     {
         $result = $this->client->query($query, $unbuffered);
         return !$result ? false : new Statement($result);
@@ -96,7 +96,7 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    public function quote(string $string)
+    public function quote(string $string): string
     {
         return "'" . $this->client->escape_string($string) . "'";
     }
@@ -104,7 +104,7 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    public function multiQuery(string $query)
+    public function multiQuery(string $query): bool
     {
         return $this->client->multi_query($query);
     }
@@ -112,7 +112,7 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    public function storedResult()
+    public function storedResult(): StatementInterface|bool
     {
         $result = $this->client->store_result();
         if (!$result) { // The resultset is empty
@@ -127,7 +127,7 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    public function nextResult()
+    public function nextResult(): mixed
     {
         $this->setError();
         $this->setAffectedRows(0);

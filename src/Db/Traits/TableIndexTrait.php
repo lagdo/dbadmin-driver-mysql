@@ -50,7 +50,7 @@ trait TableIndexTrait
     /**
      * @inheritDoc
      */
-    public function indexes(string $table)
+    public function indexes(string $table): array
     {
         $indexes = [];
         foreach ($this->driver->rows('SHOW INDEX FROM ' . $this->driver->escapeTableName($table)) as $row) {

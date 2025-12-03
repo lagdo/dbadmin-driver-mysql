@@ -25,7 +25,7 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function getAutoIncrementModifier()
+    public function getAutoIncrementModifier(): string
     {
         $autoIncrementIndex = " PRIMARY KEY";
         // don't overwrite primary key by auto increment
@@ -49,7 +49,7 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function buildSelectQuery(TableSelectEntity $select)
+    public function buildSelectQuery(TableSelectEntity $select): string
     {
         $prefix = '';
         if (($select->page) && ($select->limit) && !empty($select->group) &&
@@ -63,7 +63,7 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function getCreateTableQuery(string $table, bool $autoIncrement, string $style)
+    public function getCreateTableQuery(string $table, bool $autoIncrement, string $style): string
     {
         $query = $this->driver->result("SHOW CREATE TABLE " .
             $this->driver->escapeTableName($table), 1);
@@ -76,7 +76,7 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function getTruncateTableQuery(string $table)
+    public function getTruncateTableQuery(string $table): string
     {
         return "TRUNCATE " . $this->driver->escapeTableName($table);
     }
@@ -105,7 +105,7 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function getUseDatabaseQuery(string $database, string $style = '')
+    public function getUseDatabaseQuery(string $database, string $style = ''): string
     {
         $name = $this->escapeId($database);
         return $this->getCreateDatabaseQuery($name, $style) . "USE $name;";
@@ -114,7 +114,7 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function getCreateTriggerQuery(string $table)
+    public function getCreateTriggerQuery(string $table): string
     {
         $query = "";
         foreach ($this->driver->rows("SHOW TRIGGERS LIKE " .
@@ -129,7 +129,7 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function convertField(TableFieldEntity $field)
+    public function convertField(TableFieldEntity $field): string
     {
         if (preg_match("~binary~", $field->type)) {
             return "HEX(" . $this->escapeId($field->name) . ")";
@@ -146,7 +146,7 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function unconvertField(TableFieldEntity $field, string $value)
+    public function unconvertField(TableFieldEntity $field, string $value): string
     {
         if (preg_match("~binary~", $field->type)) {
             $value = "UNHEX($value)";
@@ -164,7 +164,7 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function queryRegex()
+    public function queryRegex(): string
     {
         return '\\s*|[\'"`#]|/\*|-- |$';
     }

@@ -33,7 +33,7 @@ class Statement implements StatementInterface
     /**
      * @inheritDoc
      */
-    public function rowCount()
+    public function rowCount(): int
     {
         return $this->result ? $this->result->num_rows : 0;
     }
@@ -41,23 +41,23 @@ class Statement implements StatementInterface
     /**
      * @inheritDoc
      */
-    public function fetchAssoc()
+    public function fetchAssoc(): array|null
     {
-        return ($this->result) ? $this->result->fetch_assoc() : null;
+        return !$this->result ? null : $this->result->fetch_assoc() ?: null;
     }
 
     /**
      * @inheritDoc
      */
-    public function fetchRow()
+    public function fetchRow(): array|null
     {
-        return ($this->result) ? $this->result->fetch_row() : null;
+        return !$this->result ? null : $this->result->fetch_row() ?: null;
     }
 
     /**
      * @inheritDoc
      */
-    public function fetchField()
+    public function fetchField(): StatementFieldEntity|null
     {
         if (!$this->result || !($field = $this->result->fetch_field())) {
             return null;

@@ -2,6 +2,7 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql;
 
+use Lagdo\DbAdmin\Driver\Db\ConnectionInterface;
 use Lagdo\DbAdmin\Driver\Driver as AbstractDriver;
 use Lagdo\DbAdmin\Driver\Exception\AuthException;
 
@@ -85,7 +86,7 @@ class Driver extends AbstractDriver
     /**
      * @inheritDoc
      */
-    protected function beforeConnection()
+    protected function beforeConnection(): void
     {
         // Init config
         $this->config->jush = 'sql';
@@ -129,7 +130,7 @@ class Driver extends AbstractDriver
     /**
      * @inheritDoc
      */
-    protected function configConnection()
+    protected function configConnection(): void
     {
         if ($this->minVersion(5.1)) {
             $this->config->features[] = 'event';
@@ -163,7 +164,7 @@ class Driver extends AbstractDriver
     /**
      * @inheritDoc
      */
-    protected function connectionOpened()
+    protected function connectionOpened(): void
     {
         $this->_server()->setConnection($this->connection);
     }
@@ -172,7 +173,7 @@ class Driver extends AbstractDriver
      * @inheritDoc
      * @throws AuthException
      */
-    public function createConnection(array $options)
+    public function createConnection(array $options): ConnectionInterface|null
     {
         $preferPdo = $options['prefer_pdo'] ?? false;
         if (!$preferPdo && extension_loaded("mysqli")) {

@@ -80,7 +80,7 @@ trait TableFieldTrait
     /**
      * @inheritDoc
      */
-    public function fields(string $table)
+    public function fields(string $table): array
     {
         $fields = [];
         $rows = $this->driver->rows("SHOW FULL COLUMNS FROM " . $this->driver->escapeTableName($table));

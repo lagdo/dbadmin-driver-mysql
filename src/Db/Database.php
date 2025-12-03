@@ -26,7 +26,7 @@ class Database extends AbstractDatabase
     /**
      * @inheritDoc
      */
-    public function createTable(TableEntity $tableAttrs)
+    public function createTable(TableEntity $tableAttrs): bool
     {
         $clauses = [];
         foreach ($tableAttrs->fields as $field) {
@@ -44,7 +44,7 @@ class Database extends AbstractDatabase
     /**
      * @inheritDoc
      */
-    public function alterTable(string $table, TableEntity $tableAttrs)
+    public function alterTable(string $table, TableEntity $tableAttrs): bool
     {
         $clauses = [];
         foreach ($tableAttrs->fields as $field) {
@@ -71,7 +71,7 @@ class Database extends AbstractDatabase
     /**
      * @inheritDoc
      */
-    public function alterIndexes(string $table, array $alter, array $drop)
+    public function alterIndexes(string $table, array $alter, array $drop): bool
     {
         $clauses = [];
         foreach ($drop as $index) {
@@ -89,7 +89,7 @@ class Database extends AbstractDatabase
     /**
      * @inheritDoc
      */
-    public function tables()
+    public function tables(): array
     {
         return $this->driver->keyValues($this->driver->minVersion(5) ?
             'SELECT TABLE_NAME, TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME' :
@@ -99,7 +99,7 @@ class Database extends AbstractDatabase
     /**
      * @inheritDoc
      */
-    public function countTables(array $databases)
+    public function countTables(array $databases): array
     {
         $counts = [];
         foreach ($databases as $database) {
@@ -111,7 +111,7 @@ class Database extends AbstractDatabase
     /**
      * @inheritDoc
      */
-    public function dropViews(array $views)
+    public function dropViews(array $views): bool
     {
         $this->driver->execute('DROP VIEW ' . implode(', ', array_map(function ($view) {
             return $this->driver->escapeTableName($view);
@@ -122,7 +122,7 @@ class Database extends AbstractDatabase
     /**
      * @inheritDoc
      */
-    public function dropTables(array $tables)
+    public function dropTables(array $tables): bool
     {
         $this->driver->execute('DROP TABLE ' . implode(', ', array_map(function ($table) {
             return $this->driver->escapeTableName($table);
@@ -133,7 +133,7 @@ class Database extends AbstractDatabase
     /**
      * @inheritDoc
      */
-    public function truncateTables(array $tables)
+    public function truncateTables(array $tables): bool
     {
         return $this->driver->applyQueries('TRUNCATE TABLE', $tables);
     }
@@ -141,7 +141,7 @@ class Database extends AbstractDatabase
     /**
      * @inheritDoc
      */
-    public function moveTables(array $tables, array $views, string $target)
+    public function moveTables(array $tables, array $views, string $target): bool
     {
         // The feature is not natively provided by latest MySQL versions, thus it is disabled here.
         return false;
@@ -171,7 +171,7 @@ class Database extends AbstractDatabase
     /**
      * @inheritDoc
      */
-    // public function copyTables(array $tables, array $views, string $target)
+    // public function copyTables(array $tables, array $views, string $target): bool
     // {
     //     $this->driver->execute("SET sql_mode = 'NO_AUTO_VALUE_ON_ZERO'");
     //     $overwrite = $this->utils->input->getOverwrite();
@@ -208,7 +208,7 @@ class Database extends AbstractDatabase
     /**
      * @inheritDoc
      */
-    public function events()
+    public function events(): array
     {
         return $this->driver->rows('SHOW EVENTS');
     }
