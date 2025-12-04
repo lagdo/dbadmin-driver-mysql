@@ -43,7 +43,7 @@ class Statement implements StatementInterface
      */
     public function fetchAssoc(): array|null
     {
-        return !$this->result ? null : $this->result->fetch_assoc() ?: null;
+        return !$this->result ? null : ($this->result->fetch_assoc() ?: null);
     }
 
     /**
@@ -51,7 +51,7 @@ class Statement implements StatementInterface
      */
     public function fetchRow(): array|null
     {
-        return !$this->result ? null : $this->result->fetch_row() ?: null;
+        return !$this->result ? null : ($this->result->fetch_row() ?: null);
     }
 
     /**

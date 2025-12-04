@@ -19,7 +19,7 @@ class Table extends AbstractTable
      *
      * @return array
      */
-    private function queryStatus(bool $fast, string $table = '')
+    private function queryStatus(bool $fast, string $table = ''): array
     {
         // Todo: use match
         $query = ($fast && $this->driver->minVersion(5)) ?
@@ -35,7 +35,7 @@ class Table extends AbstractTable
      *
      * @return TableEntity
      */
-    private function makeStatus(array $row)
+    private function makeStatus(array $row): TableEntity
     {
         $status = new TableEntity($row['Name']);
         $status->engine = $row['Engine'];
@@ -142,10 +142,12 @@ class Table extends AbstractTable
     {
         $maria = preg_match('~MariaDB~', $this->driver->serverInfo());
         if ($this->driver->isInformationSchema($this->driver->database())) {
-            return strtolower(($maria ? "information-schema-$name-table/" : str_replace("_", "-", $name) . "-table.html"));
+            return strtolower(($maria ? "information-schema-$name-table/" :
+                    str_replace("_", "-", $name) . "-table.html"));
         }
         if ($this->driver->database() == "mysql") {
             return ($maria ? "mysql$name-table/" : "system-database.html"); //! more precise link
         }
+        return '';
     }
 }

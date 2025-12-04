@@ -74,14 +74,14 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    protected function setCharset(string $charset)
+    protected function setCharset(string $charset): void
     {
         if ($this->client->set_charset($charset)) {
             return;
         }
         // the client library may not support utf8mb4
         $this->client->set_charset('utf8');
-        return $this->client->query("SET NAMES $charset");
+        $this->client->query("SET NAMES $charset");
     }
 
     /**

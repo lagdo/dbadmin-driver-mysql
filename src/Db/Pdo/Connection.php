@@ -55,7 +55,7 @@ class Connection extends PdoConnection
     /**
      * @inheritDoc
      */
-    protected function setCharset(string $charset)
+    protected function setCharset(string $charset): void
     {
         $this->query("SET NAMES $charset"); // charset in DSN is ignored before PHP 5.3.6
     }

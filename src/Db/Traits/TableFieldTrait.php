@@ -37,7 +37,7 @@ trait TableFieldTrait
      *
      * @return string
      */
-    private function getRowUpdateFunction(array $row)
+    private function getRowUpdateFunction(array $row): string
     {
         if (preg_match('~^on update (.+)~i', $row["Extra"], $match) === false) {
             return '';
