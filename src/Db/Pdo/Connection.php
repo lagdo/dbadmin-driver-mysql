@@ -4,7 +4,7 @@ namespace Lagdo\DbAdmin\Driver\MySql\Db\Pdo;
 
 use Lagdo\DbAdmin\Driver\Db\Pdo\Connection as PdoConnection;
 use Lagdo\DbAdmin\Driver\Db\StatementInterface;
-use Lagdo\DbAdmin\Driver\MySql\Db\ConnectionTrait;
+use Lagdo\DbAdmin\Driver\MySql\Db\Traits\ConnectionTrait;
 
 use PDO;
 

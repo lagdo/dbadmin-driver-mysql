@@ -5,7 +5,7 @@ namespace Lagdo\DbAdmin\Driver\MySql\Db\MySqli;
 use Lagdo\DbAdmin\Driver\Db\Connection as AbstractConnection;
 use Lagdo\DbAdmin\Driver\Db\PreparedStatement;
 use Lagdo\DbAdmin\Driver\Db\StatementInterface;
-use Lagdo\DbAdmin\Driver\MySql\Db\ConnectionTrait;
+use Lagdo\DbAdmin\Driver\MySql\Db\Traits\ConnectionTrait;
 use MySQLi;
 
 use function explode;

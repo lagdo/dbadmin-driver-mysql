@@ -1,13 +1,23 @@
 <?php
 
-namespace Lagdo\DbAdmin\Driver\MySql\Db;
+namespace Lagdo\DbAdmin\Driver\MySql\Db\Traits;
 
 use Lagdo\DbAdmin\Driver\Db\StatementInterface;
 
+use function preg_match;
 use function preg_replace;
 
 trait ConnectionTrait
 {
+    /**
+     * @inheritDoc
+     */
+    public function flavor(): string
+    {
+        $serverInfo = $this->serverInfo();
+        return !$serverInfo ? '' : (preg_match('~MariaDB~', $serverInfo) ? 'maria' : 'mysql');
+    }
+
     /**
      * @return string
      */
