@@ -2,7 +2,7 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Db;
 
-use Lagdo\DbAdmin\Driver\Db\Grammar as AbstractGrammar;
+use Lagdo\DbAdmin\Driver\Db\AbstractGrammar;
 use Lagdo\DbAdmin\Driver\Entity\TableFieldEntity;
 use Lagdo\DbAdmin\Driver\Entity\TableSelectEntity;
 

@@ -2,7 +2,7 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Db\Pdo;
 
-use Lagdo\DbAdmin\Driver\Db\Pdo\Connection as PdoConnection;
+use Lagdo\DbAdmin\Driver\Db\Pdo\AbstractConnection;
 use Lagdo\DbAdmin\Driver\Db\StatementInterface;
 use Lagdo\DbAdmin\Driver\MySql\Db\Traits\ConnectionTrait;
 
@@ -11,7 +11,7 @@ use PDO;
 /**
  * MySQL driver to be used with the pdo_mysql PHP extension.
  */
-class Connection extends PdoConnection
+class Connection extends AbstractConnection
 {
     use ConnectionTrait;
 

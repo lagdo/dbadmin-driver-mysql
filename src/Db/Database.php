@@ -2,11 +2,28 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Db;
 
-use Lagdo\DbAdmin\Driver\Db\Database as AbstractDatabase;
+use Lagdo\DbAdmin\Driver\Db\AbstractDatabase;
 use Lagdo\DbAdmin\Driver\Entity\FieldType;
 use Lagdo\DbAdmin\Driver\Entity\RoutineEntity;
 use Lagdo\DbAdmin\Driver\Entity\RoutineInfoEntity;
 use Lagdo\DbAdmin\Driver\Entity\TableEntity;
+
+use function addcslashes;
+use function array_keys;
+use function array_map;
+use function array_merge;
+use function count;
+use function implode;
+use function preg_match;
+use function preg_match_all;
+use function preg_replace;
+use function preg_replace_callback;
+use function str_replace;
+use function stripcslashes;
+use function strtolower;
+use function strtoupper;
+use function substr;
+use function trim;
 
 class Database extends AbstractDatabase
 {
@@ -51,7 +68,8 @@ class Database extends AbstractDatabase
             $clauses[] = 'ADD ' . implode($field[1]) . $field[2];
         }
         foreach ($tableAttrs->edited as $field) {
-            $clauses[] = 'CHANGE ' . $this->driver->escapeId($field[0]) . ' ' . implode($field[1]) . $field[2];
+            $clauses[] = 'CHANGE ' . $this->driver->escapeId($field[0]) .
+                ' ' . implode($field[1]) . $field[2];
         }
         foreach ($tableAttrs->dropped as $column) {
             $clauses[] = 'DROP ' . $this->driver->escapeId($column);
@@ -63,8 +81,8 @@ class Database extends AbstractDatabase
         }
         $clauses[] = $this->_tableStatus($tableAttrs);
 
-        $result = $this->driver->execute('ALTER TABLE ' . $this->driver->escapeTableName($table) . ' ' .
-            implode(', ', $clauses) . ' ' . $tableAttrs->partitioning);
+        $result = $this->driver->execute('ALTER TABLE ' . $this->driver->escapeTableName($table) .
+            ' ' . implode(', ', $clauses) . ' ' . $tableAttrs->partitioning);
         return $result !== false;
     }
 
@@ -82,7 +100,8 @@ class Database extends AbstractDatabase
                 ($index->name != '' ? $this->driver->escapeId($index->name) . ' ' : '') .
                 '(' . implode(', ', $index->columns) . ')';
         }
-        $result = $this->driver->execute('ALTER TABLE ' . $this->driver->escapeTableName($table) . ' ' . implode(', ', $clauses));
+        $result = $this->driver->execute('ALTER TABLE ' .
+            $this->driver->escapeTableName($table) . ' ' . implode(', ', $clauses));
         return $result !== false;
     }
 
@@ -222,12 +241,12 @@ class Database extends AbstractDatabase
         $aliases = ['bool', 'boolean', 'integer', 'double precision', 'real',
             'dec', 'numeric', 'fixed', 'national char', 'national varchar'];
         $space = "(?:\\s|/\\*[\s\S]*?\\*/|(?:#|-- )[^\n]*\n?|--\r?\n)";
-        $type_pattern = "((" . implode("|", array_merge(array_keys($this->driver->types()), $aliases)) .
+        $typePattern = "((" . implode("|", array_merge(array_keys($this->driver->types()), $aliases)) .
             ")\\b(?:\\s*\\(((?:[^'\")]|$enumLength)++)\\))?\\s*(zerofill\\s*)?" .
             "(unsigned(?:\\s+zerofill)?)?)(?:\\s*(?:CHARSET|CHARACTER\\s+SET)" .
             "\\s*['\"]?([^'\"\\s,]+)['\"]?)?(?:\\s*COLLATE\\s*['\"]?[^'\"\\s,]+['\"]?)?"; //! store COLLATE
         $pattern = "$space*(" . ($type == 'FUNCTION' ? '' : $this->driver->inout()) .
-            ")?\\s*(?:`((?:[^`]|``)*)`\\s*|\\b(\\S+)\\s+)$type_pattern";
+            ")?\\s*(?:`((?:[^`]|``)*)`\\s*|\\b(\\S+)\\s+)$typePattern";
 
         $create = $this->driver->result("SHOW CREATE $type " . $this->driver->escapeId($name), 2);
         if (!$create) {
@@ -235,7 +254,7 @@ class Database extends AbstractDatabase
         }
 
         preg_match("~\\(((?:$pattern\\s*,?)*)\\)\\s*" . ($type == "FUNCTION" ?
-            "RETURNS\\s+$type_pattern\\s+" : '') . "(.*)~is", $create, $match);
+            "RETURNS\\s+$typePattern\\s+" : '') . "(.*)~is", $create, $match);
         $language = 'SQL'; // available in information_schema.ROUTINES.PARAMETER_STYLE;
         $query = "SELECT ROUTINE_COMMENT FROM information_schema.ROUTINES WHERE " .
             "ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = " . $this->driver->quote($name);

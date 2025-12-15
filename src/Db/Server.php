@@ -2,7 +2,7 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Db;
 
-use Lagdo\DbAdmin\Driver\Db\Server as AbstractServer;
+use Lagdo\DbAdmin\Driver\Db\AbstractServer;
 use Lagdo\DbAdmin\Driver\Db\StatementInterface;
 
 use function array_key_exists;
