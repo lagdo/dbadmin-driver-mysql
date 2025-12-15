@@ -31,7 +31,7 @@ Declare the MySQL servers in the `packages` section on the `Jaxon` config file. 
 ```php
     'app' => [
         'packages' => [
-            Lagdo\DbAdmin\DbAdminPackage::class => [
+            Lagdo\DbAdmin\Db\DbAdminPackage::class => [
                 'servers' => [
                     'server_id' => [ // A unique identifier for this server
                         'driver' => 'mysql',
