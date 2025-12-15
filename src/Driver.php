@@ -2,7 +2,7 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql;
 
-use Lagdo\DbAdmin\Driver\Db\ConnectionInterface;
+use Lagdo\DbAdmin\Driver\Db\Connection;
 use Lagdo\DbAdmin\Driver\Driver as AbstractDriver;
 use Lagdo\DbAdmin\Driver\Exception\AuthException;
 
@@ -173,7 +173,7 @@ class Driver extends AbstractDriver
      * @inheritDoc
      * @throws AuthException
      */
-    public function createConnection(array $options): ConnectionInterface|null
+    public function createConnection(array $options): Connection|null
     {
         $preferPdo = $options['prefer_pdo'] ?? false;
         if (!$preferPdo && extension_loaded("mysqli")) {
