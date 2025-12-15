@@ -111,15 +111,15 @@ class Driver extends AbstractDriver
             "round", "floor", "ceil", "sec_to_time", "time_to_sec", "upper"];
         $this->config->grouping = ["avg", "count", "count distinct", "group_concat", "max", "min", "sum"];
         $this->config->insertFunctions = [
-            "char" => "md5/sha1/password/encrypt/uuid",
-            "binary" => "md5/sha1",
-            "date|time" => "now",
+            "char" => ["md5", "sha1", "password", "encrypt", "uuid"],
+            "binary" => ["md5", "sha1"],
+            "date|time" => ["now"],
         ];
         $this->config->editFunctions = [
-            $this->numberRegex() => "+/-",
-            "date" => "+ interval/- interval",
-            "time" => "addtime/subtime",
-            "char|text" => "concat",
+            $this->numberRegex() => ["+", "-"],
+            "date" => ["+ interval", "- interval"],
+            "time" => ["addtime", "subtime"],
+            "char|text" => ["concat"],
         ];
         // Features always available
         $this->config->features = ['comment', 'columns', 'copy', 'database', 'drop_col',
@@ -147,11 +147,11 @@ class Driver extends AbstractDriver
         }
         if ($this->minVersion('', 10.7)) {
             $this->config->setTypes(['Strings' => ["uuid" => 128]]);
-            $this->config->insertFunctions['uuid'] = 'uuid';
+            $this->config->insertFunctions['uuid'] = ['uuid'];
         }
         if ($this->minVersion(9, '')) {
             $this->config->setTypes(['Numbers' => ["vecto" => 16383]]);
-            $this->config->insertFunctions['vector'] = 'string_to_vector';
+            $this->config->insertFunctions['vector'] = ['string_to_vector'];
         }
         if ($this->minVersion(5.1, '')) {
             $this->config->partitionBy = ["HASH", "LINEAR HASH", "KEY", "LINEAR KEY", "RANGE", "LIST"];
