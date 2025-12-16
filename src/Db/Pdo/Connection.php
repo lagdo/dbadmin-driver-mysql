@@ -40,8 +40,13 @@ class Connection extends AbstractConnection
                 $options[PDO::MYSQL_ATTR_SSL_CA] = $ssl['ca'];
             }
         }
-        $this->dsn("mysql:charset=utf8;host=" . str_replace(":", ";unix_socket=",
-            preg_replace('~:(\d)~', ';port=\1', $server)), $username, $password, $options);
+
+        $dsn = "mysql:charset=utf8;host=" . str_replace(":", ";unix_socket=",
+            preg_replace('~:(\d)~', ';port=\1', $server));
+        if (!$this->dsn($dsn, $username, $password, $options)) {
+            return false;
+        }
+
 
         if (($database)) {
             $this->query("USE " . $this->driver->escapeId($database));

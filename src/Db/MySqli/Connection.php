@@ -6,12 +6,12 @@ use Lagdo\DbAdmin\Driver\Db\AbstractConnection;
 use Lagdo\DbAdmin\Driver\Db\PreparedStatement;
 use Lagdo\DbAdmin\Driver\Db\StatementInterface;
 use Lagdo\DbAdmin\Driver\MySql\Db\Traits\ConnectionTrait;
-use MySQLi;
 
 use function explode;
 use function ini_get;
 use function intval;
 use function is_numeric;
+use function mysqli_init;
 use function mysqli_report;
 
 /**
@@ -32,8 +32,12 @@ class Connection extends AbstractConnection
         $socket = null;
 
         // Create the MySQLi client
-        $this->client = new MySQLi();
+        $this->client = mysqli_init();
 
+        // Specify the connection timeout (both timeouts need to be set)
+        // See https://stackoverflow.com/questions/64853050/why-mysqli-connect-doesnt-respect-mysqli-opt-connect-timeout
+        $this->client->options(MYSQLI_OPT_CONNECT_TIMEOUT, 2);
+        $this->client->options(MYSQLI_OPT_READ_TIMEOUT, 2);
         mysqli_report(MYSQLI_REPORT_OFF); // stays between requests, not required since PHP 5.3.4
         [$host, $port] = explode(":", $server, 2); // part after : is used for port or socket
         $ssl = $this->options('ssl');
