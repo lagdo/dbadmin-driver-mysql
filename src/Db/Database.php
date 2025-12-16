@@ -237,7 +237,7 @@ class Database extends AbstractDatabase
      */
     public function routine(string $name, string $type): RoutineInfoEntity|null
     {
-        $enumLength = $this->driver->enumLength();
+        $enumLength = $this->driver->enumLengthRegex();
         $aliases = ['bool', 'boolean', 'integer', 'double precision', 'real',
             'dec', 'numeric', 'fixed', 'national char', 'national varchar'];
         $space = "(?:\\s|/\\*[\s\S]*?\\*/|(?:#|-- )[^\n]*\n?|--\r?\n)";

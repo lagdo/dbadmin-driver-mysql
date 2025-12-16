@@ -125,6 +125,9 @@ class Driver extends AbstractDriver
         $this->config->features = ['comment', 'columns', 'copy', 'database', 'drop_col',
             'dump', 'indexes', 'kill', 'privileges', 'move_col', 'procedure', 'processlist',
             'routine', 'sql', 'status', 'table', 'trigger', 'variables', 'view'];
+
+        // Regex to parse SQL statements in a text
+        $this->config->sqlStatementRegex = '\\s*|[\'"`#]|/\*|-- |$';
     }
 
     /**

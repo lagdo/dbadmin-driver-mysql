@@ -160,12 +160,4 @@ class Grammar extends AbstractGrammar
         }
         return $value;
     }
-
-    /**
-     * @inheritDoc
-     */
-    public function queryRegex(): string
-    {
-        return '\\s*|[\'"`#]|/\*|-- |$';
-    }
 }
