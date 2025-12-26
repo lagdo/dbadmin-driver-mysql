@@ -18,14 +18,6 @@ class Query extends AbstractQuery
     /**
      * @inheritDoc
      */
-    protected function limitToOne(string $table, string $query, string $where): string
-    {
-        return $this->driver->getLimitClause($query, $where, 1, 0);
-    }
-
-    /**
-     * @inheritDoc
-     */
     public function insert(string $table, array $values): bool
     {
         if (!empty($values)) {

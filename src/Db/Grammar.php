@@ -49,6 +49,14 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
+    protected function limitToOne(string $table, string $query, string $where): string
+    {
+        return $this->getLimitClause($query, $where, 1, 0);
+    }
+
+    /**
+     * @inheritDoc
+     */
     public function buildSelectQuery(TableSelectEntity $select): string
     {
         $prefix = '';
