@@ -224,7 +224,7 @@ AND PARTITION_NAME != '' ORDER BY PARTITION_ORDINAL_POSITION";
         $field->type = $matchType[1] ?? '';
         $field->length = $matchType[2] ?? '';
         $field->unsigned = ltrim(($matchType[3] ?? '') . ($matchType[4] ?? ''));
-        $field->null = $row["IS_NULLABLE"] === "YES";
+        $field->nullable = $row["IS_NULLABLE"] === "YES";
         $field->autoIncrement = $extra === "auto_increment";
         $field->collation = $row["COLLATION_NAME"] ?? '';
         $field->comment = $row["COLUMN_COMMENT"] ?? '';
