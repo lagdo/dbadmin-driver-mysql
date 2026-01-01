@@ -88,21 +88,22 @@ class Driver extends AbstractDriver
      */
     protected function beforeConnection(): void
     {
+        $trans = $this->utils->trans;
         // Init config
         $this->config->jush = 'sql';
         $this->config->drivers = ["MySQLi", "PDO_MySQL"];
-        $this->config->setTypes([
-            'Numbers' => ["tinyint" => 3, "smallint" => 5, "mediumint" => 8, "int" => 10,
+        $this->config->types = [
+            $trans->lang('Numbers') => ["tinyint" => 3, "smallint" => 5, "mediumint" => 8, "int" => 10,
                 "bigint" => 20, "decimal" => 66, "float" => 12, "double" => 21],
-            'Date and time' => ["date" => 10, "datetime" => 19, "timestamp" => 19, "time" => 10, "year" => 4],
-            'Strings' => ["char" => 255, "varchar" => 65535, "tinytext" => 255,
+            $trans->lang('Date and time') => ["date" => 10, "datetime" => 19, "timestamp" => 19, "time" => 10, "year" => 4],
+            $trans->lang('Strings') => ["char" => 255, "varchar" => 65535, "tinytext" => 255,
                 "text" => 65535, "mediumtext" => 16777215, "longtext" => 4294967295],
-            'Lists' => ["enum" => 65535, "set" => 64],
-            'Binary' => ["bit" => 20, "binary" => 255, "varbinary" => 65535, "tinyblob" => 255,
+            $trans->lang('Lists') => ["enum" => 65535, "set" => 64],
+            $trans->lang('Binary') => ["bit" => 20, "binary" => 255, "varbinary" => 65535, "tinyblob" => 255,
                 "blob" => 65535, "mediumblob" => 16777215, "longblob" => 4294967295],
-            'Geometry' => ["geometry" => 0, "point" => 0, "linestring" => 0, "polygon" => 0,
+            $trans->lang('Geometry') => ["geometry" => 0, "point" => 0, "linestring" => 0, "polygon" => 0,
                 "multipoint" => 0, "multilinestring" => 0, "multipolygon" => 0, "geometrycollection" => 0],
-        ]);
+        ];
         $this->config->unsigned = ["unsigned", "zerofill", "unsigned zerofill"];
         $this->config->operators = ["=", "<", ">", "<=", ">=", "!=", "LIKE", "LIKE %%",
             "REGEXP", "IN", "FIND_IN_SET", "IS NULL", "NOT LIKE", "NOT REGEXP",
@@ -145,15 +146,16 @@ class Driver extends AbstractDriver
             $this->config->features[] = 'check';
         }
 
+        $trans = $this->utils->trans;
         if ($this->minVersion('5.7.8', 10.2)) {
-            $this->config->setTypes(['Strings' => ["json" => 4294967295]]);
+            $this->config->types[$trans->lang('Strings')]["json"] = 4294967295;
         }
         if ($this->minVersion('', 10.7)) {
-            $this->config->setTypes(['Strings' => ["uuid" => 128]]);
+            $this->config->types[$trans->lang('Strings')]["uuid"] = 128;
             $this->config->insertFunctions['uuid'] = ['uuid'];
         }
         if ($this->minVersion(9, '')) {
-            $this->config->setTypes(['Numbers' => ["vecto" => 16383]]);
+            $this->config->types[$trans->lang('Numbers')]["vector"] = 16383;
             $this->config->insertFunctions['vector'] = ['string_to_vector'];
         }
         if ($this->minVersion(5.1, '')) {
