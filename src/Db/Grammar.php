@@ -71,7 +71,7 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function getCreateTableQuery(string $table, bool $autoIncrement, string $style): string
+    public function getTableDefinitionQueries(string $table, bool $autoIncrement, string $style): string
     {
         $query = $this->driver->result("SHOW CREATE TABLE " .
             $this->driver->escapeTableName($table), 1);
@@ -84,7 +84,7 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function getTruncateTableQuery(string $table): string
+    public function getTableTruncationQuery(string $table): string
     {
         return "TRUNCATE " . $this->driver->escapeTableName($table);
     }
@@ -122,7 +122,7 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function getCreateTriggerQuery(string $table): string
+    public function getTriggerCreationQuery(string $table): string
     {
         $query = "";
         foreach ($this->driver->rows("SHOW TRIGGERS LIKE " .
