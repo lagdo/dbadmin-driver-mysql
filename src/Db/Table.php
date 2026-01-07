@@ -56,21 +56,6 @@ class Table extends AbstractTable
     }
 
     /**
-     * @inheritDoc
-     */
-    public function referencableTables(string $table): array
-    {
-        $fields = []; // table_name => [field]
-        foreach ($this->tableStatuses(true) as $tableName => $tableStatus) {
-            if ($tableName !== $table && $this->supportForeignKeys($tableStatus) &&
-                ($field = $this->getTablePrimaryKeyField($tableName)) !== null) {
-                $fields[$tableName] = $field;
-            }
-        }
-        return $fields;
-    }
-
-    /**
      * @param array $match
      *
      * @return ForeignKeyEntity

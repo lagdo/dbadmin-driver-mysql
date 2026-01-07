@@ -3,9 +3,13 @@
 namespace Lagdo\DbAdmin\Driver\MySql\Db;
 
 use Lagdo\DbAdmin\Driver\Db\AbstractGrammar;
+use Lagdo\DbAdmin\Driver\Entity\ColumnEntity;
+use Lagdo\DbAdmin\Driver\Entity\TableAlterEntity;
+use Lagdo\DbAdmin\Driver\Entity\TableCreateEntity;
 use Lagdo\DbAdmin\Driver\Entity\TableFieldEntity;
 use Lagdo\DbAdmin\Driver\Entity\TableSelectEntity;
 
+use function array_map;
 use function count;
 use function in_array;
 use function preg_match;
@@ -66,6 +70,79 @@ class Grammar extends AbstractGrammar
         }
 
         return $prefix . parent::buildSelectQuery($select);
+    }
+
+    /**
+     * @param ColumnEntity $column
+     *
+     * @return string
+     */
+    private function getTableColumnClause(ColumnEntity $column): string
+    {
+        if (preg_match('~ GENERATED~', $column->field->default ?? '')) {
+            // swap default and null
+            // MariaDB doesn't support NULL on virtual columns
+            $column->field->default = $this->driver->flavor() === 'maria' ? "" : $column->field->nullable;
+            $column->field->nullable = $column->field->hasDefault();
+        }
+        return $column->clause();
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getTableCreationQueries(TableCreateEntity $table): array
+    {
+        $clauses = array_map(fn(ColumnEntity $column) =>
+            $this->getTableColumnClause($column), $table->columns);
+        $clauses = [
+            ...$clauses,
+            ...$this->getForeignKeyClauses($table, 'ADD '),
+        ];
+
+        $status = $table->options(fn($str) => $this->driver->quote($str));
+        // Todo: append partitioning clauses to $status
+
+        $tableName = $this->driver->escapeTableName($table->name);
+        $clauses = implode(', ', $clauses);
+        return ["CREATE TABLE $tableName ($clauses) $status"];
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getTableAlterationQueries(TableAlterEntity $table): array
+    {
+        $clauses = [];
+        foreach ($table->addedColumns as $column) {
+            $clauses[] = 'ADD ' . $this->getTableColumnClause($column) . $column->after;
+        }
+        foreach ($table->changedColumns as $fieldName => $column) {
+            $fieldName = $this->driver->escapeId($fieldName);
+            // The field rename is done here.
+            $clauses[] = "CHANGE $fieldName " . $this->getTableColumnClause($column) . $column->after;
+        }
+        foreach ($table->droppedColumns as $fieldName) {
+            $clauses[] = 'DROP ' . $this->driver->escapeId($fieldName);
+        }
+        $clauses = [
+            ...$clauses,
+            ...$this->getForeignKeyClauses($table, 'ADD '),
+        ];
+
+        if ($table->name !== $table->current->name) {
+            $clauses[] = 'RENAME TO ' . $this->driver->escapeTableName($table->name);
+        }
+
+        $status = $table->options(fn($str) => $this->driver->quote($str));
+        // Todo: append partitioning clauses to $status
+        if ($status !== '') {
+            $clauses[] = $status;
+        }
+
+        $tableName = $this->driver->escapeTableName($table->name);
+        $clauses = implode(', ', $clauses);
+        return ["ALTER TABLE $tableName $clauses"];
     }
 
     /**

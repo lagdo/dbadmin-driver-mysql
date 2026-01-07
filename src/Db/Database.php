@@ -28,65 +28,6 @@ use function trim;
 class Database extends AbstractDatabase
 {
     /**
-     * @param TableEntity $tableAttrs
-     *
-     * @return string
-     */
-    private function _tableStatus(TableEntity $tableAttrs)
-    {
-        return 'COMMENT=' . $this->driver->quote($tableAttrs->comment) .
-            ($tableAttrs->engine ? ' ENGINE=' . $this->driver->quote($tableAttrs->engine) : '') .
-            ($tableAttrs->collation ? ' COLLATE ' . $this->driver->quote($tableAttrs->collation) : '') .
-            ($tableAttrs->autoIncrement !== 0 ? " AUTO_INCREMENT=$tableAttrs->autoIncrement" : '');
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function createTable(TableEntity $tableAttrs): bool
-    {
-        $clauses = [];
-        foreach ($tableAttrs->fields as $field) {
-            $clauses[] = implode($field[1]);
-        }
-
-        $clauses = array_merge($clauses, $tableAttrs->foreign);
-        $status = $this->_tableStatus($tableAttrs);
-
-        $result = $this->driver->execute('CREATE TABLE ' . $this->driver->escapeTableName($tableAttrs->name) .
-            ' (' . implode(', ', $clauses) . ") $status $tableAttrs->partitioning");
-        return $result !== false;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function alterTable(string $table, TableEntity $tableAttrs): bool
-    {
-        $clauses = [];
-        foreach ($tableAttrs->fields as $field) {
-            $clauses[] = 'ADD ' . implode($field[1]) . $field[2];
-        }
-        foreach ($tableAttrs->edited as $field) {
-            $clauses[] = 'CHANGE ' . $this->driver->escapeId($field[0]) .
-                ' ' . implode($field[1]) . $field[2];
-        }
-        foreach ($tableAttrs->dropped as $column) {
-            $clauses[] = 'DROP ' . $this->driver->escapeId($column);
-        }
-
-        $clauses = array_merge($clauses, $tableAttrs->foreign);
-        if ($tableAttrs->name !== '' && $table !== $tableAttrs->name) {
-            $clauses[] = 'RENAME TO ' . $this->driver->escapeTableName($tableAttrs->name);
-        }
-        $clauses[] = $this->_tableStatus($tableAttrs);
-
-        $result = $this->driver->execute('ALTER TABLE ' . $this->driver->escapeTableName($table) .
-            ' ' . implode(', ', $clauses) . ' ' . $tableAttrs->partitioning);
-        return $result !== false;
-    }
-
-    /**
      * @inheritDoc
      */
     public function alterIndexes(string $table, array $alter, array $drop): bool
@@ -277,9 +218,9 @@ class Database extends AbstractDatabase
             $collation = strtolower($param[9] ?? '');
             $unsigned = strtolower(preg_replace('~\s+~', ' ',
                 trim(($param[8] ?? '') . ' ' . ($param[7] ?? ''))));
-            $null = 1;
+            $nullable = 1;
             return new FieldType(name: $name, type: $type, length: $length, inout: $inout, fullType: $fullType,
-                collation: $collation, unsigned: $unsigned, null: $null);
+                collation: $collation, unsigned: $unsigned, nullable: $nullable);
         }, $matches);
 
         return $type !== 'FUNCTION' ?
