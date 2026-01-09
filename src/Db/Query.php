@@ -3,8 +3,8 @@
 namespace Lagdo\DbAdmin\Driver\MySql\Db;
 
 use Lagdo\DbAdmin\Driver\Db\AbstractQuery;
-use Lagdo\DbAdmin\Driver\Entity\TableFieldEntity;
-use Lagdo\DbAdmin\Driver\Entity\TableEntity;
+use Lagdo\DbAdmin\Driver\Dto\TableFieldDto;
+use Lagdo\DbAdmin\Driver\Dto\TableDto;
 
 use function count;
 use function array_keys;
@@ -77,7 +77,7 @@ class Query extends AbstractQuery
     /**
      * @inheritDoc
      */
-    public function convertSearch(string $idf, array $value, TableFieldEntity $field): string
+    public function convertSearch(string $idf, array $value, TableFieldDto $field): string
     {
         return (preg_match('~char|text|enum|set~', $field->type) &&
             !preg_match('~^utf8~', $field->collation) &&
@@ -111,7 +111,7 @@ class Query extends AbstractQuery
     /**
      * @inheritDoc
      */
-    public function countRows(TableEntity $tableStatus, array $where): int|null
+    public function countRows(TableDto $tableStatus, array $where): int|null
     {
         return (!empty($where) || $tableStatus->engine != 'InnoDB' ? null : count($tableStatus->rows));
     }

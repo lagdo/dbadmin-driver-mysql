@@ -3,11 +3,11 @@
 namespace Lagdo\DbAdmin\Driver\MySql\Db;
 
 use Lagdo\DbAdmin\Driver\Db\AbstractGrammar;
-use Lagdo\DbAdmin\Driver\Entity\ColumnEntity;
-use Lagdo\DbAdmin\Driver\Entity\TableAlterEntity;
-use Lagdo\DbAdmin\Driver\Entity\TableCreateEntity;
-use Lagdo\DbAdmin\Driver\Entity\TableFieldEntity;
-use Lagdo\DbAdmin\Driver\Entity\TableSelectEntity;
+use Lagdo\DbAdmin\Driver\Dto\ColumnDto;
+use Lagdo\DbAdmin\Driver\Dto\TableAlterDto;
+use Lagdo\DbAdmin\Driver\Dto\TableCreateDto;
+use Lagdo\DbAdmin\Driver\Dto\TableFieldDto;
+use Lagdo\DbAdmin\Driver\Dto\TableSelectDto;
 
 use function array_map;
 use function count;
@@ -61,7 +61,7 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function buildSelectQuery(TableSelectEntity $select): string
+    public function buildSelectQuery(TableSelectDto $select): string
     {
         $prefix = '';
         if (($select->page) && ($select->limit) && !empty($select->group) &&
@@ -73,11 +73,11 @@ class Grammar extends AbstractGrammar
     }
 
     /**
-     * @param ColumnEntity $column
+     * @param ColumnDto $column
      *
      * @return string
      */
-    private function getTableColumnClause(ColumnEntity $column): string
+    private function getTableColumnClause(ColumnDto $column): string
     {
         if (preg_match('~ GENERATED~', $column->field->default ?? '')) {
             // swap default and null
@@ -91,9 +91,9 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function getTableCreationQueries(TableCreateEntity $table): array
+    public function getTableCreationQueries(TableCreateDto $table): array
     {
-        $clauses = array_map(fn(ColumnEntity $column) =>
+        $clauses = array_map(fn(ColumnDto $column) =>
             $this->getTableColumnClause($column), $table->columns);
         $clauses = [
             ...$clauses,
@@ -111,7 +111,7 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function getTableAlterationQueries(TableAlterEntity $table): array
+    public function getTableAlterationQueries(TableAlterDto $table): array
     {
         $clauses = [];
         foreach ($table->addedColumns as $column) {
@@ -214,7 +214,7 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function convertField(TableFieldEntity $field): string
+    public function convertField(TableFieldDto $field): string
     {
         if (preg_match("~binary~", $field->type)) {
             return "HEX(" . $this->escapeId($field->name) . ")";
@@ -231,7 +231,7 @@ class Grammar extends AbstractGrammar
     /**
      * @inheritDoc
      */
-    public function unconvertField(TableFieldEntity $field, string $value): string
+    public function unconvertField(TableFieldDto $field, string $value): string
     {
         if (preg_match("~binary~", $field->type)) {
             $value = "UNHEX($value)";

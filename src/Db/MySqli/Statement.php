@@ -3,7 +3,7 @@
 namespace Lagdo\DbAdmin\Driver\MySql\Db\MySqli;
 
 use Lagdo\DbAdmin\Driver\Db\StatementInterface;
-use Lagdo\DbAdmin\Driver\Entity\StatementFieldEntity;
+use Lagdo\DbAdmin\Driver\Dto\StatementFieldDto;
 use mysqli_result;
 
 use function is_a;
@@ -56,12 +56,12 @@ class Statement implements StatementInterface
     /**
      * @inheritDoc
      */
-    public function fetchField(): StatementFieldEntity|null
+    public function fetchField(): StatementFieldDto|null
     {
         if (!$this->result || !($field = $this->result->fetch_field())) {
             return null;
         }
-        return new StatementFieldEntity($field->type, $field->type === 63, // 63 - binary
+        return new StatementFieldDto($field->type, $field->type === 63, // 63 - binary
             $field->name, $field->orgname, $field->table, $field->orgtable);
     }
 

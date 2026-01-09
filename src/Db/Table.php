@@ -3,12 +3,12 @@
 namespace Lagdo\DbAdmin\Driver\MySql\Db;
 
 use Lagdo\DbAdmin\Driver\Db\AbstractTable;
-use Lagdo\DbAdmin\Driver\Entity\ForeignKeyEntity;
-use Lagdo\DbAdmin\Driver\Entity\IndexEntity;
-use Lagdo\DbAdmin\Driver\Entity\PartitionEntity;
-use Lagdo\DbAdmin\Driver\Entity\TableEntity;
-use Lagdo\DbAdmin\Driver\Entity\TableFieldEntity;
-use Lagdo\DbAdmin\Driver\Entity\TriggerEntity;
+use Lagdo\DbAdmin\Driver\Dto\ForeignKeyDto;
+use Lagdo\DbAdmin\Driver\Dto\IndexDto;
+use Lagdo\DbAdmin\Driver\Dto\PartitionDto;
+use Lagdo\DbAdmin\Driver\Dto\TableDto;
+use Lagdo\DbAdmin\Driver\Dto\TableFieldDto;
+use Lagdo\DbAdmin\Driver\Dto\TriggerDto;
 
 use function array_flip;
 use function array_pad;
@@ -28,7 +28,7 @@ class Table extends AbstractTable
     /**
      * @inheritDoc
      */
-    public function supportForeignKeys(TableEntity $tableStatus): bool
+    public function supportForeignKeys(TableDto $tableStatus): bool
     {
         return preg_match('~InnoDB|IBMDB2I~i', $tableStatus->engine ?? '')
             || (preg_match('~NDB~i', $tableStatus->engine ?? '')
@@ -38,7 +38,7 @@ class Table extends AbstractTable
     /**
      * @param string $tableName
      *
-     * @return TableFieldEntity|null
+     * @return TableFieldDto|null
      */
     private function getTablePrimaryKeyField(string $tableName)
     {
@@ -58,9 +58,9 @@ class Table extends AbstractTable
     /**
      * @param array $match
      *
-     * @return ForeignKeyEntity
+     * @return ForeignKeyDto
      */
-    private function makeTableForeignKey(array $match): ForeignKeyEntity
+    private function makeTableForeignKey(array $match): ForeignKeyDto
     {
         $match = array_pad($match, 8, '');
 
@@ -68,7 +68,7 @@ class Table extends AbstractTable
         preg_match_all("~$pattern~", $match[2], $source);
         preg_match_all("~$pattern~", $match[5], $target);
 
-        $foreignKey = new ForeignKeyEntity();
+        $foreignKey = new ForeignKeyDto();
 
         $foreignKey->database = $this->driver->unescapeId($match[4] != "" ? $match[3] : $match[4]);
         $foreignKey->table = $this->driver->unescapeId($match[4] != "" ? $match[4] : $match[3]);
@@ -109,7 +109,7 @@ class Table extends AbstractTable
     /**
      * @inheritDoc
      */
-    public function checkConstraints(TableEntity $status): array
+    public function checkConstraints(TableDto $status): array
     {
         // From driver.inc.php
         $database = $this->driver->quote($this->driver->database());
@@ -126,7 +126,7 @@ AND CHECK_CLAUSE NOT LIKE '% IS NOT NULL'";
     /**
      * @inheritDoc
      */
-    public function partitionsInfo(string $table): PartitionEntity|null
+    public function partitionsInfo(string $table): PartitionDto|null
     {
         $database = $this->driver->quote($this->driver->database());
         $tableName = $this->driver->quote($table);
@@ -139,7 +139,7 @@ ORDER BY PARTITION_ORDINAL_POSITION DESC LIMIT 1";
         }
 
         [$fields, $strategy, $partitions] = $result;
-        $entity = new PartitionEntity($strategy, $fields);
+        $entity = new PartitionDto($strategy, $fields);
         $entity->partitions = $partitions;
 
         $query = "SELECT PARTITION_NAME, PARTITION_DESCRIPTION $from
@@ -189,11 +189,11 @@ AND PARTITION_NAME != '' ORDER BY PARTITION_ORDINAL_POSITION";
     /**
      * @param array $row
      *
-     * @return TableFieldEntity
+     * @return TableFieldDto
      */
-    private function makeTableFieldEntity(array $row): TableFieldEntity
+    private function makeTableFieldDto(array $row): TableFieldDto
     {
-        $field = new TableFieldEntity();
+        $field = new TableFieldDto();
 
         $field->fullType = $row["COLUMN_TYPE"];
         $extra = $row["EXTRA"];
@@ -242,7 +242,7 @@ AND PARTITION_NAME != '' ORDER BY PARTITION_ORDINAL_POSITION";
 AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
         $rows = $this->driver->rows($query);
         foreach ($rows as $row) {
-            $field = $this->makeTableFieldEntity($row);
+            $field = $this->makeTableFieldDto($row);
             $fields[$field->name] = $field;
         }
 
@@ -269,11 +269,11 @@ AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
     /**
      * @param array $row
      *
-     * @return TableEntity
+     * @return TableDto
      */
-    private function makeStatus(array $row): TableEntity
+    private function makeStatus(array $row): TableDto
     {
-        $status = new TableEntity($row['Name']);
+        $status = new TableDto($row['Name']);
         $status->engine = $row['Engine'];
         if ($row["Engine"] == "InnoDB") {
             // ignore internal comment, unnecessary since MySQL 5.1.21
@@ -289,7 +289,7 @@ AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
     /**
      * @inheritDoc
      */
-    public function tableStatus(string $table, bool $fast = false): TableEntity|null
+    public function tableStatus(string $table, bool $fast = false): TableDto|null
     {
         $rows = $this->queryStatus($fast, $table);
         if (!($row = reset($rows))) {
@@ -327,7 +327,7 @@ AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
     /**
      * @inheritDoc
      */
-    public function isView(TableEntity $tableStatus): bool
+    public function isView(TableDto $tableStatus): bool
     {
         return $tableStatus->engine === null;
     }
@@ -358,11 +358,11 @@ AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
     /**
      * @param array $row
      *
-     * @return IndexEntity
+     * @return IndexDto
      */
-    private function makeTableIndex(array $row): IndexEntity
+    private function makeTableIndex(array $row): IndexDto
     {
-        $index = new IndexEntity();
+        $index = new IndexDto();
 
         $index->type = $this->getTableIndexType($row);
         $index->columns[] = $row['Column_name'];
@@ -387,7 +387,7 @@ AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
     /**
      * @inheritDoc
      */
-    public function trigger(string $name, string $table = ''): TriggerEntity|null
+    public function trigger(string $name, string $table = ''): TriggerDto|null
     {
         if ($name == "") {
             return null;
@@ -396,7 +396,7 @@ AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
         if (!($row = reset($rows))) {
             return null;
         }
-        return new TriggerEntity($row["Timing"], $row["Event"], '', '', $row["Trigger"]);
+        return new TriggerDto($row["Timing"], $row["Event"], '', '', $row["Trigger"]);
     }
 
     /**
@@ -406,7 +406,7 @@ AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
     {
         $triggers = [];
         foreach ($this->driver->rows("SHOW TRIGGERS LIKE " . $this->driver->quote(addcslashes($table, "%_\\"))) as $row) {
-            $triggers[$row["Trigger"]] = new TriggerEntity($row["Timing"], $row["Event"], '', '', $row["Trigger"]);
+            $triggers[$row["Trigger"]] = new TriggerDto($row["Timing"], $row["Event"], '', '', $row["Trigger"]);
         }
         return $triggers;
     }

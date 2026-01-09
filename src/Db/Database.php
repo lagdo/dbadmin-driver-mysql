@@ -3,10 +3,10 @@
 namespace Lagdo\DbAdmin\Driver\MySql\Db;
 
 use Lagdo\DbAdmin\Driver\Db\AbstractDatabase;
-use Lagdo\DbAdmin\Driver\Entity\FieldType;
-use Lagdo\DbAdmin\Driver\Entity\RoutineEntity;
-use Lagdo\DbAdmin\Driver\Entity\RoutineInfoEntity;
-use Lagdo\DbAdmin\Driver\Entity\TableEntity;
+use Lagdo\DbAdmin\Driver\Dto\FieldType;
+use Lagdo\DbAdmin\Driver\Dto\RoutineDto;
+use Lagdo\DbAdmin\Driver\Dto\RoutineInfoDto;
+use Lagdo\DbAdmin\Driver\Dto\TableDto;
 
 use function addcslashes;
 use function array_keys;
@@ -176,7 +176,7 @@ class Database extends AbstractDatabase
     /**
      * @inheritDoc
      */
-    public function routine(string $name, string $type): RoutineInfoEntity|null
+    public function routine(string $name, string $type): RoutineInfoDto|null
     {
         $enumLength = $this->driver->enumLengthRegex();
         $aliases = ['bool', 'boolean', 'integer', 'double precision', 'real',
@@ -224,8 +224,8 @@ class Database extends AbstractDatabase
         }, $matches);
 
         return $type !== 'FUNCTION' ?
-            new RoutineInfoEntity($match[11], '', $params, null, $comment ?: '') :
-            new RoutineInfoEntity($match[17], $language, $params,
+            new RoutineInfoDto($match[11], '', $params, null, $comment ?: '') :
+            new RoutineInfoDto($match[17], $language, $params,
                 new FieldType(type: $match[12], length: $match[13],
                     unsigned: $match[15], collation: $match[16]), $comment ?: '');
     }
@@ -238,7 +238,7 @@ class Database extends AbstractDatabase
         $rows = $this->driver->rows('SELECT SPECIFIC_NAME, ROUTINE_NAME, ROUTINE_TYPE, ' .
             'DTD_IDENTIFIER FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE()');
         return array_map(fn($row) =>
-            new RoutineEntity($row['ROUTINE_NAME'], $row['SPECIFIC_NAME'],
+            new RoutineDto($row['ROUTINE_NAME'], $row['SPECIFIC_NAME'],
                 $row['ROUTINE_TYPE'], $row['DTD_IDENTIFIER'] ?: ''), $rows);
     }
 
