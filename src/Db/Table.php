@@ -161,8 +161,8 @@ AND PARTITION_NAME != '' ORDER BY PARTITION_ORDINAL_POSITION";
     {
         $isMaria = $this->driver->flavor() === 'maria';
 
-        $default = $row["COLUMN_DEFAULT"] ?? '';
-        if ($default === "") {
+        $default = $row["COLUMN_DEFAULT"] ?? null;
+        if ($default === "" || $default === null) {
             return $default;
         }
 
