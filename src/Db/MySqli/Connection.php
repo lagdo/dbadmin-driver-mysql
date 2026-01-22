@@ -7,7 +7,6 @@ use Lagdo\DbAdmin\Driver\Db\PreparedStatement;
 use Lagdo\DbAdmin\Driver\Db\StatementInterface;
 use Lagdo\DbAdmin\Driver\MySql\Db\Traits\ConnectionTrait;
 
-use function explode;
 use function ini_get;
 use function intval;
 use function is_numeric;
@@ -26,7 +25,8 @@ class Connection extends AbstractConnection
     */
     public function open(string $database, string $schema = ''): bool
     {
-        $server = $this->options('server');
+        $host = $this->options('host');
+        $port = $this->options('port') ?: '';
         $username = $this->options['username'];
         $password = $this->options['password'];
         $socket = null;
@@ -39,12 +39,12 @@ class Connection extends AbstractConnection
         $this->client->options(MYSQLI_OPT_CONNECT_TIMEOUT, 2);
         $this->client->options(MYSQLI_OPT_READ_TIMEOUT, 2);
         mysqli_report(MYSQLI_REPORT_OFF); // stays between requests, not required since PHP 5.3.4
-        [$host, $port] = explode(":", $server, 2); // part after : is used for port or socket
         $ssl = $this->options('ssl');
         if ($ssl) {
             $this->client->ssl_set($ssl['key'], $ssl['cert'], $ssl['ca'], '', '');
         }
 
+        $server = $port === '' ? $host : "$host:$port";
         if (!@$this->client->real_connect(
             ($server != "" ? $host : ini_get("mysqli.default_host")),
             ($server . $username != "" ? $username : ini_get("mysqli.default_user")),
