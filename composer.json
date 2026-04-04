@@ -28,7 +28,7 @@
     },
     "autoload": {
         "psr-4": {
-            "Lagdo\\DbAdmin\\Driver\\MySql\\": "src/"
+            "Lagdo\\DbAdmin\\Support\\MySql\\": "src/"
         },
         "files": [
             "src/register.php"
@@ -36,7 +36,7 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Lagdo\\DbAdmin\\Driver\\MySql\\Tests\\": "tests/"
+            "Lagdo\\DbAdmin\\Support\\MySql\\Tests\\": "tests/"
         }
     }
 }

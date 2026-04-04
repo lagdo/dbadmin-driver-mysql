@@ -1,14 +1,14 @@
 <?php
 
-namespace Lagdo\DbAdmin\Driver\MySql\Db;
+namespace Lagdo\DbAdmin\Support\MySql\Driver;
 
-use Lagdo\DbAdmin\Driver\Db\AbstractTable;
-use Lagdo\DbAdmin\Driver\Dto\ForeignKeyDto;
-use Lagdo\DbAdmin\Driver\Dto\IndexDto;
-use Lagdo\DbAdmin\Driver\Dto\PartitionDto;
-use Lagdo\DbAdmin\Driver\Dto\TableDto;
-use Lagdo\DbAdmin\Driver\Dto\TableFieldDto;
-use Lagdo\DbAdmin\Driver\Dto\TriggerDto;
+use Lagdo\DbAdmin\Support\Db\Engine\Driver\AbstractTable;
+use Lagdo\DbAdmin\Support\Dto\ForeignKeyDto;
+use Lagdo\DbAdmin\Support\Dto\IndexDto;
+use Lagdo\DbAdmin\Support\Dto\PartitionDto;
+use Lagdo\DbAdmin\Support\Dto\TableDto;
+use Lagdo\DbAdmin\Support\Dto\TableFieldDto;
+use Lagdo\DbAdmin\Support\Dto\TriggerDto;
 
 use function array_flip;
 use function array_pad;
@@ -70,14 +70,10 @@ class Table extends AbstractTable
 
         $foreignKey = new ForeignKeyDto();
 
-        $foreignKey->database = $this->driver->unescapeId($match[4] != "" ? $match[3] : $match[4]);
-        $foreignKey->table = $this->driver->unescapeId($match[4] != "" ? $match[4] : $match[3]);
-        $foreignKey->source = array_map(function ($idf) {
-            return $this->driver->unescapeId($idf);
-        }, $source[0]);
-        $foreignKey->target = array_map(function ($idf) {
-            return $this->driver->unescapeId($idf);
-        }, $target[0]);
+        $foreignKey->database = $this->grammar->unescapeId($match[4] != "" ? $match[3] : $match[4]);
+        $foreignKey->table = $this->grammar->unescapeId($match[4] != "" ? $match[4] : $match[3]);
+        $foreignKey->source = array_map($this->grammar->unescapeId(...), $source[0]);
+        $foreignKey->target = array_map($this->grammar->unescapeId(...), $target[0]);
         $foreignKey->onDelete = $match[6] ?: "RESTRICT";
         $foreignKey->onUpdate = $match[7] ?: "RESTRICT";
 
@@ -93,14 +89,14 @@ class Table extends AbstractTable
         $foreignKeys = [];
         $onActions = $this->driver->actions();
         $createTable = $this->driver->result("SHOW CREATE TABLE " .
-            $this->driver->escapeTableName($table), 1);
+            $this->grammar->escapeTableName($table), 1);
         if ($createTable) {
             preg_match_all("~CONSTRAINT ($pattern) FOREIGN KEY ?\\(((?:$pattern,? ?)+)\\) REFERENCES " .
                 "($pattern)(?:\\.($pattern))? \\(((?:$pattern,? ?)+)\\)(?: ON DELETE ($onActions))" .
                 "?(?: ON UPDATE ($onActions))?~", $createTable, $matches, PREG_SET_ORDER);
 
             foreach ($matches as $match) {
-                $foreignKeys[$this->driver->unescapeId($match[1])] = $this->makeTableForeignKey($match);
+                $foreignKeys[$this->grammar->unescapeId($match[1])] = $this->makeTableForeignKey($match);
             }
         }
         return $foreignKeys;
@@ -378,7 +374,7 @@ AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
     public function indexes(string $table): array
     {
         $indexes = [];
-        foreach ($this->driver->rows('SHOW INDEX FROM ' . $this->driver->escapeTableName($table)) as $row) {
+        foreach ($this->driver->rows('SHOW INDEX FROM ' . $this->grammar->escapeTableName($table)) as $row) {
             $indexes[$row['Key_name']] = $this->makeTableIndex($row);
         }
         return $indexes;

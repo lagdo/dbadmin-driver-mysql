@@ -1,9 +1,9 @@
 <?php
 
-namespace Lagdo\DbAdmin\Driver\MySql\Db\MySqli;
+namespace Lagdo\DbAdmin\Support\MySql\Connection\MySqli;
 
-use Lagdo\DbAdmin\Driver\Db\StatementInterface;
-use Lagdo\DbAdmin\Driver\Dto\StatementFieldDto;
+use Lagdo\DbAdmin\Support\Db\Engine\Connection\StatementInterface;
+use Lagdo\DbAdmin\Support\Dto\StatementFieldDto;
 use mysqli_result;
 
 use function is_a;

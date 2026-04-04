@@ -1,10 +1,10 @@
 <?php
 
-namespace Lagdo\DbAdmin\Driver\MySql\Db;
+namespace Lagdo\DbAdmin\Support\MySql\Driver;
 
-use Lagdo\DbAdmin\Driver\Db\AbstractQuery;
-use Lagdo\DbAdmin\Driver\Dto\TableFieldDto;
-use Lagdo\DbAdmin\Driver\Dto\TableDto;
+use Lagdo\DbAdmin\Support\Db\Engine\Driver\AbstractQuery;
+use Lagdo\DbAdmin\Support\Dto\TableFieldDto;
+use Lagdo\DbAdmin\Support\Dto\TableDto;
 
 use function count;
 use function array_keys;
@@ -18,45 +18,33 @@ class Query extends AbstractQuery
     /**
      * @inheritDoc
      */
-    public function insert(string $table, array $values): bool
-    {
-        if (!empty($values)) {
-            return parent::insert($table, $values);
-        }
-        $result = $this->driver->execute('INSERT INTO ' . $this->driver->escapeTableName($table) . ' () VALUES ()');
-        return $result !== false;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function insertOrUpdate(string $table, array $rows, array $primary): bool
-    {
-        $columns = array_keys(reset($rows));
-        $prefix = 'INSERT INTO ' . $this->driver->escapeTableName($table) . ' (' . implode(', ', $columns) . ') VALUES ';
-        $values = [];
-        foreach ($columns as $key) {
-            $values[$key] = "$key = VALUES($key)";
-        }
-        $suffix = ' ON DUPLICATE KEY UPDATE ' . implode(', ', $values);
-        $values = [];
-        $length = 0;
-        foreach ($rows as $set) {
-            $value = '(' . implode(', ', $set) . ')';
-            if (!empty($values) && (strlen($prefix) + $length + strlen($value) + strlen($suffix) > 1e6)) {
-                // 1e6 - default max_allowed_packet
-                if (!$this->driver->execute($prefix . implode(",\n", $values) . $suffix)) {
-                    return false;
-                }
-                $values = [];
-                $length = 0;
-            }
-            $values[] = $value;
-            $length += strlen($value) + 2; // 2 - strlen(",\n")
-        }
-        $result = $this->driver->execute($prefix . implode(",\n", $values) . $suffix);
-        return $result !== false;
-    }
+    // public function insertOrUpdate(string $table, array $rows, array $primary): bool
+    // {
+    //     $columns = array_keys(reset($rows));
+    //     $prefix = 'INSERT INTO ' . $this->grammar->escapeTableName($table) . ' (' . implode(', ', $columns) . ') VALUES ';
+    //     $values = [];
+    //     foreach ($columns as $key) {
+    //         $values[$key] = "$key = VALUES($key)";
+    //     }
+    //     $suffix = ' ON DUPLICATE KEY UPDATE ' . implode(', ', $values);
+    //     $values = [];
+    //     $length = 0;
+    //     foreach ($rows as $set) {
+    //         $value = '(' . implode(', ', $set) . ')';
+    //         if (!empty($values) && (strlen($prefix) + $length + strlen($value) + strlen($suffix) > 1e6)) {
+    //             // 1e6 - default max_allowed_packet
+    //             if (!$this->driver->execute($prefix . implode(",\n", $values) . $suffix)) {
+    //                 return false;
+    //             }
+    //             $values = [];
+    //             $length = 0;
+    //         }
+    //         $values[] = $value;
+    //         $length += strlen($value) + 2; // 2 - strlen(",\n")
+    //     }
+    //     $result = $this->driver->execute($prefix . implode(",\n", $values) . $suffix);
+    //     return $result !== false;
+    // }
 
     /**
      * @inheritDoc
@@ -96,7 +84,7 @@ class Query extends AbstractQuery
             'type' => 'VIEW',
             'materialized' => false,
             'select' => preg_replace('~^(?:[^`]|`[^`]*`)*\s+AS\s+~isU', '',
-                $this->driver->result('SHOW CREATE VIEW ' . $this->driver->escapeTableName($name), 1)),
+                $this->driver->result('SHOW CREATE VIEW ' . $this->grammar->escapeTableName($name), 1)),
         ];
     }
 

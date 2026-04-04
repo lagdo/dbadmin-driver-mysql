@@ -1,11 +1,11 @@
 <?php
 
-namespace Lagdo\DbAdmin\Driver\MySql\Db\MySqli;
+namespace Lagdo\DbAdmin\Support\MySql\Connection\MySqli;
 
-use Lagdo\DbAdmin\Driver\Db\AbstractConnection;
-use Lagdo\DbAdmin\Driver\Db\PreparedStatement;
-use Lagdo\DbAdmin\Driver\Db\StatementInterface;
-use Lagdo\DbAdmin\Driver\MySql\Db\Traits\ConnectionTrait;
+use Lagdo\DbAdmin\Support\Db\Engine\Connection\PreparedStatement;
+use Lagdo\DbAdmin\Support\Db\Engine\Connection\StatementInterface;
+use Lagdo\DbAdmin\Support\Db\Engine\Driver\AbstractConnection;
+use Lagdo\DbAdmin\Support\MySql\Connection\Traits\ConnectionTrait;
 
 use function ini_get;
 use function intval;

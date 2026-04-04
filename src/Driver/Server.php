@@ -1,13 +1,14 @@
 <?php
 
-namespace Lagdo\DbAdmin\Driver\MySql\Db;
+namespace Lagdo\DbAdmin\Support\MySql\Driver;
 
-use Lagdo\DbAdmin\Driver\Db\AbstractServer;
-use Lagdo\DbAdmin\Driver\Db\StatementInterface;
+use Lagdo\DbAdmin\Support\Db\Engine\Connection\StatementInterface;
+use Lagdo\DbAdmin\Support\Db\Engine\Driver\AbstractServer;
 
 use function array_key_exists;
-use function is_a;
 use function intval;
+use function in_array;
+use function is_a;
 use function preg_match;
 
 class Server extends AbstractServer
@@ -65,7 +66,7 @@ class Server extends AbstractServer
     public function databaseCollation(string $database, array $collations): string
     {
         $collation = null;
-        $create = $this->driver->result('SHOW CREATE DATABASE ' . $this->driver->escapeId($database), 1);
+        $create = $this->driver->result('SHOW CREATE DATABASE ' . $this->grammar->escapeId($database), 1);
         if (preg_match('~ COLLATE ([^ ]+)~', $create, $match)) {
             $collation = $match[1];
         } elseif (preg_match('~ CHARACTER SET ([^ ]+)~', $create, $match)) {
@@ -125,49 +126,6 @@ class Server extends AbstractServer
     {
         return in_array($database, ['sys', 'mysql',
             'performance_schema', 'information_schema']);
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function createDatabase(string $database, string $collation): bool
-    {
-        $result = $this->driver->execute('CREATE DATABASE ' . $this->driver->escapeId($database) .
-            ($collation ? ' COLLATE ' . $this->driver->quote($collation) : ''));
-        return $result !== false;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function dropDatabase(string $database): bool
-    {
-        $result = $this->driver->execute('DROP DATABASE ' . $this->driver->escapeId($database));
-        return $result !== false;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function renameDatabase(string $name, string $collation): bool
-    {
-        // The feature is not natively provided by latest MySQL versions, thus it is disabled here.
-        return false;
-        /*$renamed = false;
-        if ($this->createDatabase($name, $collation)) {
-            $tables = [];
-            $views = [];
-            foreach ($this->driver->tables() as $table => $type) {
-                if ($type == 'VIEW') {
-                    $views[] = $table;
-                } else {
-                    $tables[] = $table;
-                }
-            }
-            $renamed = (!$tables && !$views) || $this->driver->moveTables($tables, $views, $name);
-            $this->dropDatabase($renamed ? $this->driver->database() : '');
-        }
-        return $renamed;*/
     }
 
     /**

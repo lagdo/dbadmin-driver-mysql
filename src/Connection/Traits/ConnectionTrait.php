@@ -1,8 +1,8 @@
 <?php
 
-namespace Lagdo\DbAdmin\Driver\MySql\Db\Traits;
+namespace Lagdo\DbAdmin\Support\MySql\Connection\Traits;
 
-use Lagdo\DbAdmin\Driver\Db\StatementInterface;
+use Lagdo\DbAdmin\Support\Db\Engine\Connection\StatementInterface;
 
 use function preg_match;
 use function preg_replace;
