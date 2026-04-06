@@ -135,8 +135,7 @@ ORDER BY PARTITION_ORDINAL_POSITION DESC LIMIT 1";
         }
 
         [$fields, $strategy, $partitions] = $result;
-        $entity = new PartitionDto($strategy, $fields);
-        $entity->partitions = $partitions;
+        $entity = new PartitionDto($strategy, $fields, $partitions);
 
         $query = "SELECT PARTITION_NAME, PARTITION_DESCRIPTION $from
 AND PARTITION_NAME != '' ORDER BY PARTITION_ORDINAL_POSITION";
