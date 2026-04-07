@@ -80,7 +80,7 @@ class Driver extends AbstractDriver
      */
     public function name(): string
     {
-        return "MySQL";
+        return $this->flavor() === 'maria' ? 'MariaDB' : 'MySQL';
     }
 
     /**
