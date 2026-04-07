@@ -91,7 +91,7 @@ class Table extends AbstractTable
     /**
      * @inheritDoc
      */
-    public function getTableDefinitionQueries(string $table, bool $autoIncrement, string $style): string
+    public function getExportTableQueries(string $table, bool $autoIncrement, string $style): string
     {
         $query = $this->driver->result("SHOW CREATE TABLE " .
             $this->grammar->escapeTableName($table), 1);
