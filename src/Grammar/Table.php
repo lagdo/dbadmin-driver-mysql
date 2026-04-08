@@ -36,14 +36,13 @@ class Table extends AbstractTable
      */
     public function getCreateTableQueries(TableCreateDto $table): array
     {
-        $clauses = array_map(fn(ColumnDto $column) =>
-            $this->getTableColumnClause($column), $table->columns);
+        $clauses = array_map($this->getTableColumnClause(...), $table->columns);
         $clauses = [
             ...$clauses,
             ...$this->getForeignKeyClauses($table, 'ADD '),
         ];
 
-        $status = $table->options(fn($str) => $this->driver->quote($str));
+        $status = $table->options($this->driver->quote(...));
         // Todo: append partitioning clauses to $status
 
         $tableName = $this->grammar->escapeTableName($table->name);
@@ -77,7 +76,7 @@ class Table extends AbstractTable
             $clauses[] = 'RENAME TO ' . $this->grammar->escapeTableName($table->name);
         }
 
-        $status = $table->options(fn($str) => $this->driver->quote($str));
+        $status = $table->options($this->driver->quote(...));
         // Todo: append partitioning clauses to $status
         if ($status !== '') {
             $clauses[] = $status;
@@ -115,8 +114,8 @@ class Table extends AbstractTable
     public function getCreateTriggerQuery(string $table): string
     {
         $query = "";
-        foreach ($this->driver->rows("SHOW TRIGGERS LIKE " .
-            $this->driver->quote(addcslashes($table, "%_\\"))) as $row) {
+        $tableName = $this->driver->quote(addcslashes($table, "%_\\"));
+        foreach ($this->driver->rows("SHOW TRIGGERS LIKE $tableName") as $row) {
             $query .= "\nCREATE TRIGGER " . $this->grammar->escapeId($row["Trigger"]) .
                 " $row[Timing] $row[Event] ON " . $this->grammar->escapeTableName($row["Table"]) .
                 " FOR EACH ROW\n$row[Statement];;\n";
