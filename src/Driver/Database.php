@@ -2,6 +2,7 @@
 
 namespace Lagdo\DbAdmin\Support\MySql\Driver;
 
+use Lagdo\DbAdmin\Support\Db\Engine\Connection\StatementInterface;
 use Lagdo\DbAdmin\Support\Db\Engine\Driver\AbstractDatabase;
 use Lagdo\DbAdmin\Support\Dto\FieldType;
 use Lagdo\DbAdmin\Support\Dto\RoutineDto;
@@ -13,6 +14,9 @@ use function array_map;
 use function array_merge;
 use function count;
 use function implode;
+use function intval;
+use function in_array;
+use function is_a;
 use function preg_match;
 use function preg_match_all;
 use function preg_replace;
@@ -26,6 +30,79 @@ use function trim;
 
 class Database extends AbstractDatabase
 {
+    /**
+     * @inheritDoc
+     */
+    public function databases(bool $flush): array
+    {
+        // !!! Caching and slow query handling are temporarily disabled !!!
+        $query = $this->driver->minVersion(5) ?
+            'SELECT SCHEMA_NAME FROM information_schema.SCHEMATA ORDER BY SCHEMA_NAME' :
+            'SHOW DATABASES';
+        return $this->driver->values($query);
+
+        // SHOW DATABASES can take a very long time so it is cached
+        // $databases = get_session('dbs');
+        // if ($databases === null) {
+        //     $query = ($this->driver->minVersion(5)
+        //         ? 'SELECT SCHEMA_NAME FROM information_schema.SCHEMATA ORDER BY SCHEMA_NAME'
+        //         : 'SHOW DATABASES'
+        //     ); // SHOW DATABASES can be disabled by skip_show_database
+        //     $databases = ($flush ? slow_query($query) : $this->driver->values($query));
+        //     restart_session();
+        //     set_session('dbs', $databases);
+        //     stop_session();
+        // }
+        // return $databases;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function databaseSize(string $database): int
+    {
+        $statement = $this->driver->execute('SELECT SUM(data_length + index_length) ' .
+            'FROM information_schema.tables where table_schema=' . $this->driver->quote($database));
+        if (is_a($statement, StatementInterface::class) && ($row = $statement->fetchRow())) {
+            return intval($row[0]);
+        }
+        return 0;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function databaseCollation(string $database, array $collations): string
+    {
+        $collation = null;
+        $create = $this->driver->result('SHOW CREATE DATABASE ' . $this->grammar->escapeId($database), 1);
+        if (preg_match('~ COLLATE ([^ ]+)~', $create, $match)) {
+            $collation = $match[1];
+        } elseif (preg_match('~ CHARACTER SET ([^ ]+)~', $create, $match)) {
+            // default collation
+            $collation = $collations[$match[1]][-1];
+        }
+        return $collation;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function isInformationSchema(string $database): bool
+    {
+        return ($this->driver->minVersion(5) && $database == 'information_schema') ||
+            ($this->driver->minVersion(5.5) && $database == 'performance_schema');
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function isSystemSchema(string $database): bool
+    {
+        return in_array($database, ['sys', 'mysql',
+            'performance_schema', 'information_schema']);
+    }
+
     /**
      * @inheritDoc
      */

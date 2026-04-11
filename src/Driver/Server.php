@@ -2,17 +2,121 @@
 
 namespace Lagdo\DbAdmin\Support\MySql\Driver;
 
-use Lagdo\DbAdmin\Support\Db\Engine\Connection\StatementInterface;
+use Lagdo\DbAdmin\Support\Db\Engine\Connection\AbstractConnection;
 use Lagdo\DbAdmin\Support\Db\Engine\Driver\AbstractServer;
+use Lagdo\DbAdmin\Support\Dto\UserDto;
+use Lagdo\DbAdmin\Support\Exception\AuthException;
+use Lagdo\DbAdmin\Support\MySql\Connection;
 
-use function array_key_exists;
-use function intval;
-use function in_array;
-use function is_a;
+use function extension_loaded;
 use function preg_match;
+use function preg_match_all;
 
 class Server extends AbstractServer
 {
+    /**
+     * @inheritDoc
+     */
+    protected function starting(): void
+    {
+        $trans = $this->utils->trans;
+        // Init config
+        $this->config->jush = 'sql';
+        $this->config->drivers = ["MySQLi", "PDO_MySQL"];
+        $this->config->types = [
+            $trans->lang('Numbers') => ["tinyint" => 3, "smallint" => 5, "mediumint" => 8, "int" => 10,
+                "bigint" => 20, "decimal" => 66, "float" => 12, "double" => 21],
+            $trans->lang('Date and time') => ["date" => 10, "datetime" => 19, "timestamp" => 19, "time" => 10, "year" => 4],
+            $trans->lang('Strings') => ["char" => 255, "varchar" => 65535, "tinytext" => 255,
+                "text" => 65535, "mediumtext" => 16777215, "longtext" => 4294967295],
+            $trans->lang('Lists') => ["enum" => 65535, "set" => 64],
+            $trans->lang('Binary') => ["bit" => 20, "binary" => 255, "varbinary" => 65535, "tinyblob" => 255,
+                "blob" => 65535, "mediumblob" => 16777215, "longblob" => 4294967295],
+            $trans->lang('Geometry') => ["geometry" => 0, "point" => 0, "linestring" => 0, "polygon" => 0,
+                "multipoint" => 0, "multilinestring" => 0, "multipolygon" => 0, "geometrycollection" => 0],
+        ];
+        $this->config->unsigned = ["unsigned", "zerofill", "unsigned zerofill"];
+        $this->config->operators = ["=", "<", ">", "<=", ">=", "!=", "LIKE", "LIKE %%",
+            "REGEXP", "IN", "FIND_IN_SET", "IS NULL", "NOT LIKE", "NOT REGEXP",
+            "NOT IN", "IS NOT NULL", "SQL"];
+        $this->config->functions = ["char_length", "date", "from_unixtime", "lower",
+            "round", "floor", "ceil", "sec_to_time", "time_to_sec", "upper"];
+        $this->config->grouping = ["avg", "count", "count distinct", "group_concat", "max", "min", "sum"];
+        $this->config->insertFunctions = [
+            "char" => ["md5", "sha1", "password", "encrypt", "uuid"],
+            "binary" => ["md5", "sha1"],
+            "date|time" => ["now"],
+        ];
+        $this->config->editFunctions = [
+            $this->driver->numberRegex() => ["+", "-"],
+            "date" => ["+ interval", "- interval"],
+            "time" => ["addtime", "subtime"],
+            "char|text" => ["concat"],
+        ];
+        // Features always available
+        $this->config->features = ['comment', 'columns', 'copy', 'database', 'drop_col',
+            'dump', 'indexes', 'kill', 'privileges', 'move_col', 'procedure', 'processlist',
+            'routine', 'sql', 'status', 'table', 'trigger', 'variables', 'view'];
+
+        // Regex to parse SQL statements in a text
+        $this->config->sqlStatementRegex = '\\s*|[\'"`#]|/\*|-- |$';
+    }
+
+    /**
+     * @inheritDoc
+     */
+    protected function connected(): void
+    {
+        if ($this->driver->minVersion(5.1)) {
+            $this->config->features[] = 'event';
+        }
+        if ($this->driver->minVersion(8)) {
+            $this->config->features[] = 'descidx';
+        }
+        if ($this->driver->minVersion('8.0.16', '10.2.1')) {
+            $this->config->features[] = 'check';
+        }
+
+        $trans = $this->utils->trans;
+        if ($this->driver->minVersion('5.7.8', 10.2)) {
+            $this->config->types[$trans->lang('Strings')]["json"] = 4294967295;
+        }
+        if ($this->driver->minVersion('', 10.7)) {
+            $this->config->types[$trans->lang('Strings')]["uuid"] = 128;
+            $this->config->insertFunctions['uuid'] = ['uuid'];
+        }
+        if ($this->driver->minVersion(9, '')) {
+            $this->config->types[$trans->lang('Numbers')]["vector"] = 16383;
+            $this->config->insertFunctions['vector'] = ['string_to_vector'];
+        }
+        if ($this->driver->minVersion(5.1, '')) {
+            $this->config->partitionBy = ["HASH", "LINEAR HASH", "KEY", "LINEAR KEY", "RANGE", "LIST"];
+        }
+        if ($this->driver->minVersion(5.7, 10.2)) {
+            $this->config->generated = ["STORED", "VIRTUAL"];
+        }
+    }
+
+    /**
+     * @inheritDoc
+     * @throws AuthException
+     */
+    public function createConnection(array $options): AbstractConnection|null
+    {
+        $preferPdo = $options['prefer_pdo'] ?? false;
+        if (!$preferPdo && extension_loaded("mysqli")) {
+            return new Connection\MySqli\Connection($this->driver,
+                $this->grammar, $this->utils, $options, 'MySQLi');
+        }
+        if (extension_loaded("pdo_mysql")) {
+            return new Connection\Pdo\Connection($this->driver,
+                $this->grammar, $this->utils, $options, 'PDO_MySQL');
+        }
+
+        throw new AuthException($this->utils->trans
+            ->lang('No package installed to connect to a MySQL server.'));
+    }
+
     /**
      * @inheritDoc
      */
@@ -24,56 +128,72 @@ class Server extends AbstractServer
     /**
      * @inheritDoc
      */
-    public function databases(bool $flush): array
+    public function getUsers(string $database): array
     {
-        // !!! Caching and slow query handling are temporarily disabled !!!
-        $query = $this->driver->minVersion(5) ?
-            'SELECT SCHEMA_NAME FROM information_schema.SCHEMATA ORDER BY SCHEMA_NAME' :
-            'SHOW DATABASES';
-        return $this->driver->values($query);
+        // From privileges.inc.php
+        $clause = ($database == '' ? 'user' : 'db WHERE ' .
+            $this->connection->quote($database) . ' LIKE Db');
+        $query = "SELECT User, Host FROM mysql.$clause ORDER BY Host, User";
+        $statement = $this->connection->query($query);
+        // $grant = $statement;
+        if (!$statement) {
+            // list logged user, information_schema.USER_PRIVILEGES lists just the current user too
+            $statement = $this->connection->query("SELECT SUBSTRING_INDEX(CURRENT_USER, '@', 1) " .
+                "AS User, SUBSTRING_INDEX(CURRENT_USER, '@', -1) AS Host");
+        }
+        $users = [];
+        while ($user = $statement->fetchAssoc()) {
+            $users[] = $user;
+        }
+        return $users;
+    }
 
-        // SHOW DATABASES can take a very long time so it is cached
-        // $databases = get_session('dbs');
-        // if ($databases === null) {
-        //     $query = ($this->driver->minVersion(5)
-        //         ? 'SELECT SCHEMA_NAME FROM information_schema.SCHEMATA ORDER BY SCHEMA_NAME'
-        //         : 'SHOW DATABASES'
-        //     ); // SHOW DATABASES can be disabled by skip_show_database
-        //     $databases = ($flush ? slow_query($query) : $this->driver->values($query));
-        //     restart_session();
-        //     set_session('dbs', $databases);
-        //     stop_session();
-        // }
-        // return $databases;
+    /**
+     * @param UserDto $user
+     * @param array $grant
+     *
+     * @return void
+     */
+    private function addUserGrant(UserDto $user, array $grant)
+    {
+        if (preg_match('~GRANT (.*) ON (.*) TO ~', $grant[0], $match) &&
+            preg_match_all('~ *([^(,]*[^ ,(])( *\([^)]+\))?~', $match[1], $matches, PREG_SET_ORDER)) {
+            //! escape the part between ON and TO
+            foreach ($matches as $val) {
+                $match2 = $match[2] ?? '';
+                $val2 = $val[2] ?? '';
+                if ($val[1] != 'USAGE') {
+                    $user->grants["$match2$val2"][$val[1]] = true;
+                }
+                if (preg_match('~ WITH GRANT OPTION~', $grant[0])) { //! don't check inside strings and identifiers
+                    $user->grants["$match2$val2"]['GRANT OPTION'] = true;
+                }
+            }
+        }
+        if (preg_match("~ IDENTIFIED BY PASSWORD '([^']+)~", $grant[0], $match)) {
+            $user->password = $match[1];
+        }
     }
 
     /**
      * @inheritDoc
      */
-    public function databaseSize(string $database): int
+    public function getUserGrants(string $user, string $host): UserDto
     {
-        $statement = $this->driver->execute('SELECT SUM(data_length + index_length) ' .
-            'FROM information_schema.tables where table_schema=' . $this->driver->quote($database));
-        if (is_a($statement, StatementInterface::class) && ($row = $statement->fetchRow())) {
-            return intval($row[0]);
-        }
-        return 0;
-    }
+        $entity = new UserDto($user, $host);
 
-    /**
-     * @inheritDoc
-     */
-    public function databaseCollation(string $database, array $collations): string
-    {
-        $collation = null;
-        $create = $this->driver->result('SHOW CREATE DATABASE ' . $this->grammar->escapeId($database), 1);
-        if (preg_match('~ COLLATE ([^ ]+)~', $create, $match)) {
-            $collation = $match[1];
-        } elseif (preg_match('~ CHARACTER SET ([^ ]+)~', $create, $match)) {
-            // default collation
-            $collation = $collations[$match[1]][-1];
+        // From user.inc.php
+        //! use information_schema for MySQL 5 - column names in column privileges are not escaped
+        $query = 'SHOW GRANTS FOR ' . $this->connection->quote($user) .
+            '@' . $this->connection->quote($host);
+        if (!($statement = $this->connection->query($query))) {
+            return $entity;
         }
-        return $collation;
+
+        while ($grant = $statement->fetchRow()) {
+            $this->addUserGrant($entity, $grant);
+        }
+        return $entity;
     }
 
     /**
@@ -99,33 +219,16 @@ class Server extends AbstractServer
         foreach ($this->driver->rows('SHOW COLLATION') as $row) {
             if ($row['Default']) {
                 $collations[$row['Charset']][-1] = $row['Collation'];
-            } else {
-                $collations[$row['Charset']][] = $row['Collation'];
+                continue;
             }
+            // Else
+            $collations[$row['Charset']][] = $row['Collation'];
         }
         ksort($collations);
         foreach ($collations as $key => $val) {
             asort($collations[$key]);
         }
         return $collations;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function isInformationSchema(string $database): bool
-    {
-        return ($this->driver->minVersion(5) && $database == 'information_schema') ||
-            ($this->driver->minVersion(5.5) && $database == 'performance_schema');
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function isSystemSchema(string $database): bool
-    {
-        return in_array($database, ['sys', 'mysql',
-            'performance_schema', 'information_schema']);
     }
 
     /**
@@ -150,18 +253,6 @@ class Server extends AbstractServer
     public function processes(): array
     {
         return $this->driver->rows('SHOW FULL PROCESSLIST');
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function processAttr(array $process, string $key, string $val): string
-    {
-        $match = array_key_exists('Command', $process) && preg_match('~Query|Killed~', $process['Command']);
-        if ($key == 'Info' && $match && $val != '') {
-            return '<code>' . $this->utils->str->shortenUtf8($val, 50) . '</code>' . $this->utils->trans->lang('Clone');
-        }
-        return parent::processAttr($process, $key, $val);
     }
 
     /**

@@ -14,7 +14,7 @@ class Query extends AbstractQuery
     /**
      * @inheritDoc
      */
-    protected function limitToOne(string $table, string $query, string $where): string
+    public function limitToOne(string $table, string $query, string $where): string
     {
         return $this->getLimitClause($query, $where, 1, 0);
     }
@@ -29,7 +29,6 @@ class Query extends AbstractQuery
             count($select->group) < count($select->fields)) {
             $prefix = 'SQL_CALC_FOUND_ROWS ';
         }
-
         return $prefix . parent::getTableSelectQuery($select);
     }
 

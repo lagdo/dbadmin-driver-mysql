@@ -5,7 +5,6 @@ namespace Lagdo\DbAdmin\Support\MySql\Connection\Pdo;
 use Lagdo\DbAdmin\Support\Db\Engine\Connection\Pdo\AbstractConnection;
 use Lagdo\DbAdmin\Support\Db\Engine\Connection\StatementInterface;
 use Lagdo\DbAdmin\Support\MySql\Connection\Traits\ConnectionTrait;
-
 use PDO;
 
 /**
