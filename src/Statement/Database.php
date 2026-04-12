@@ -1,8 +1,8 @@
 <?php
 
-namespace Lagdo\DbAdmin\Support\MySql\Grammar;
+namespace Lagdo\DbAdmin\Driver\MySql\Statement;
 
-use Lagdo\DbAdmin\Support\Db\Engine\Grammar\AbstractDatabase;
+use Lagdo\DbAdmin\Driver\Sql\Specific\Statement\AbstractDatabase;
 
 use function array_map;
 use function implode;
@@ -22,12 +22,12 @@ class Database extends AbstractDatabase
         if (!preg_match('~CREATE~', $style)) {
             return '';
         }
-        $create = $this->_driver()->result("SHOW CREATE DATABASE $database", 1);
+        $create = $this->_engine()->result("SHOW CREATE DATABASE $database", 1);
         if (!$create) {
             return '';
         }
 
-        $this->_grammar()->setUtf8mb4($create);
+        $this->_statement()->setUtf8mb4($create);
         $drop = $style !== 'DROP+CREATE' ? '' : "DROP DATABASE IF EXISTS $database;\n";
         return "{$drop}{$create};\n";
     }
@@ -37,7 +37,7 @@ class Database extends AbstractDatabase
      */
     public function getUseDatabaseQuery(string $database, string $style = ''): string
     {
-        $name = $this->_grammar()->escapeId($database);
+        $name = $this->_statement()->escapeId($database);
         return $this->getInitDatabaseQuery($name, $style) . "USE $name;";
     }
 
@@ -46,8 +46,8 @@ class Database extends AbstractDatabase
      */
     public function getCreateDatabaseQuery(string $database, string $collation): string
     {
-        return 'CREATE DATABASE ' . $this->_grammar()->escapeId($database) .
-            ($collation ? ' COLLATE ' . $this->_driver()->quote($collation) : '');
+        return 'CREATE DATABASE ' . $this->_statement()->escapeId($database) .
+            ($collation ? ' COLLATE ' . $this->_engine()->quote($collation) : '');
     }
 
     /**
@@ -55,7 +55,7 @@ class Database extends AbstractDatabase
      */
     public function getDropDatabaseQuery(string $database): string
     {
-        return 'DROP DATABASE ' . $this->_grammar()->escapeId($database);
+        return 'DROP DATABASE ' . $this->_statement()->escapeId($database);
     }
 
     /**
@@ -69,7 +69,7 @@ class Database extends AbstractDatabase
         $fields = $this->_utils()->input->getFields();
         $autoIncrementField = $this->_utils()->input->getAutoIncrementField();
         if ($table != "" && $autoIncrementField) {
-            foreach ($this->_driver()->indexes($table) as $index) {
+            foreach ($this->_engine()->indexes($table) as $index) {
                 if (in_array($fields[$autoIncrementField]["orig"], $index->columns, true)) {
                     $autoIncrementIndex = "";
                     break;
@@ -88,7 +88,7 @@ class Database extends AbstractDatabase
     public function getDropViewsQueries(array $views): array
     {
         return [
-            'DROP VIEW ' . implode(', ', array_map($this->_grammar()->escapeTableName(...), $views)),
+            'DROP VIEW ' . implode(', ', array_map($this->_statement()->escapeTableName(...), $views)),
         ];
     }
 
@@ -98,7 +98,7 @@ class Database extends AbstractDatabase
     public function getDropTablesQueries(array $tables): array
     {
         return [
-            'DROP TABLE ' . implode(', ', array_map($this->_grammar()->escapeTableName(...), $tables)),
+            'DROP TABLE ' . implode(', ', array_map($this->_statement()->escapeTableName(...), $tables)),
         ];
     }
 
@@ -108,6 +108,6 @@ class Database extends AbstractDatabase
     public function getTruncateTablesQueries(array $tables): array
     {
         return array_map(fn(string $table) =>
-            'TRUNCATE TABLE ' . $this->_grammar()->escapeTableName($table), $tables);
+            'TRUNCATE TABLE ' . $this->_statement()->escapeTableName($table), $tables);
     }
 }

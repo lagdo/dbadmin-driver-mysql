@@ -1,11 +1,11 @@
 <?php
 
-namespace Lagdo\DbAdmin\Support\MySql\Connection\MySqli;
+namespace Lagdo\DbAdmin\Driver\MySql\Connection\MySqli;
 
-use Lagdo\DbAdmin\Support\Db\Engine\Connection\AbstractConnection;
-use Lagdo\DbAdmin\Support\Db\Engine\Connection\PreparedStatement;
-use Lagdo\DbAdmin\Support\Db\Engine\Connection\StatementInterface;
-use Lagdo\DbAdmin\Support\MySql\Connection\Traits\ConnectionTrait;
+use Lagdo\DbAdmin\Driver\Sql\Specific\Connection\AbstractConnection;
+use Lagdo\DbAdmin\Driver\Sql\Specific\Connection\PreparedStatement;
+use Lagdo\DbAdmin\Driver\Sql\Specific\Connection\StatementInterface;
+use Lagdo\DbAdmin\Driver\MySql\Connection\Traits\ConnectionTrait;
 
 use function ini_get;
 use function intval;
@@ -62,7 +62,7 @@ class Connection extends AbstractConnection
             $this->client->select_db($database);
         }
         // Available in MySQLi since PHP 5.0.5
-        $this->setCharset($this->_driver()->charset());
+        $this->setCharset($this->_engine()->charset());
         $this->query("SET sql_quote_show_create = 1, autocommit = 1");
         return true;
     }

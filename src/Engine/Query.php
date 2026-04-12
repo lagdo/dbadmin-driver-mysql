@@ -1,10 +1,10 @@
 <?php
 
-namespace Lagdo\DbAdmin\Support\MySql\Driver;
+namespace Lagdo\DbAdmin\Driver\MySql\Engine;
 
-use Lagdo\DbAdmin\Support\Db\Engine\Driver\AbstractQuery;
-use Lagdo\DbAdmin\Support\Dto\TableFieldDto;
-use Lagdo\DbAdmin\Support\Dto\TableDto;
+use Lagdo\DbAdmin\Driver\Sql\Specific\Engine\AbstractQuery;
+use Lagdo\DbAdmin\Driver\Sql\Dto\TableFieldDto;
+use Lagdo\DbAdmin\Driver\Sql\Dto\TableDto;
 
 use function count;
 use function array_keys;
@@ -21,7 +21,7 @@ class Query extends AbstractQuery
     // public function insertOrUpdate(string $table, array $rows, array $primary): bool
     // {
     //     $columns = array_keys(reset($rows));
-    //     $prefix = 'INSERT INTO ' . $this->_grammar()->escapeTableName($table) . ' (' . implode(', ', $columns) . ') VALUES ';
+    //     $prefix = 'INSERT INTO ' . $this->_statement()->escapeTableName($table) . ' (' . implode(', ', $columns) . ') VALUES ';
     //     $values = [];
     //     foreach ($columns as $key) {
     //         $values[$key] = "$key = VALUES($key)";
@@ -33,7 +33,7 @@ class Query extends AbstractQuery
     //         $value = '(' . implode(', ', $set) . ')';
     //         if (!empty($values) && (strlen($prefix) + $length + strlen($value) + strlen($suffix) > 1e6)) {
     //             // 1e6 - default max_allowed_packet
-    //             if (!$this->_driver()->execute($prefix . implode(",\n", $values) . $suffix)) {
+    //             if (!$this->_engine()->execute($prefix . implode(",\n", $values) . $suffix)) {
     //                 return false;
     //             }
     //             $values = [];
@@ -42,7 +42,7 @@ class Query extends AbstractQuery
     //         $values[] = $value;
     //         $length += strlen($value) + 2; // 2 - strlen(",\n")
     //     }
-    //     $result = $this->_driver()->execute($prefix . implode(",\n", $values) . $suffix);
+    //     $result = $this->_engine()->execute($prefix . implode(",\n", $values) . $suffix);
     //     return $result !== false;
     // }
 
@@ -52,8 +52,8 @@ class Query extends AbstractQuery
     public function slowQuery(string $query, int $timeout): string|null
     {
         // $this->connection->timeout = $timeout;
-        if ($this->_driver()->minVersion('5.7.8', '10.1.2')) {
-            if (preg_match('~MariaDB~', $this->_driver()->serverInfo())) {
+        if ($this->_engine()->minVersion('5.7.8', '10.1.2')) {
+            if (preg_match('~MariaDB~', $this->_engine()->serverInfo())) {
                 return "SET STATEMENT max_statement_time=$timeout FOR $query";
             } elseif (preg_match('~^(SELECT\b)(.+)~is', $query, $match)) {
                 return "$match[1] /*+ MAX_EXECUTION_TIME(" . ($timeout * 1000) . ") */ $match[2]";
@@ -70,7 +70,7 @@ class Query extends AbstractQuery
         return (preg_match('~char|text|enum|set~', $field->type) &&
             !preg_match('~^utf8~', $field->collation) &&
             preg_match('~[\x80-\xFF]~', $value['val']) ?
-            "CONVERT($idf USING " . $this->_driver()->charset() . ')' : $idf
+            "CONVERT($idf USING " . $this->_engine()->charset() . ')' : $idf
         );
     }
 
@@ -84,7 +84,7 @@ class Query extends AbstractQuery
             'type' => 'VIEW',
             'materialized' => false,
             'select' => preg_replace('~^(?:[^`]|`[^`]*`)*\s+AS\s+~isU', '',
-                $this->_driver()->result('SHOW CREATE VIEW ' . $this->_grammar()->escapeTableName($name), 1)),
+                $this->_engine()->result('SHOW CREATE VIEW ' . $this->_statement()->escapeTableName($name), 1)),
         ];
     }
 
@@ -93,7 +93,7 @@ class Query extends AbstractQuery
      */
     public function lastAutoIncrementId(): string
     {
-        return $this->_driver()->result('SELECT LAST_INSERT_ID()'); // mysql_insert_id() truncates bigint
+        return $this->_engine()->result('SELECT LAST_INSERT_ID()'); // mysql_insert_id() truncates bigint
     }
 
     /**

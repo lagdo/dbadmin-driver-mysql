@@ -1,8 +1,8 @@
 <?php
 
-namespace Lagdo\DbAdmin\Support\MySql\Connection\Traits;
+namespace Lagdo\DbAdmin\Driver\MySql\Connection\Traits;
 
-use Lagdo\DbAdmin\Support\Db\Engine\Connection\StatementInterface;
+use Lagdo\DbAdmin\Driver\Sql\Specific\Connection\StatementInterface;
 
 use function preg_match;
 use function preg_replace;
@@ -37,7 +37,7 @@ trait ConnectionTrait
      */
     public function explain(string $query): StatementInterface|bool
     {
-        return $this->query('EXPLAIN ' . ($this->_driver()->minVersion(5.1) &&
-            !$this->_driver()->minVersion(5.7) ? 'PARTITIONS ' : '') . $query);
+        return $this->query('EXPLAIN ' . ($this->_engine()->minVersion(5.1) &&
+            !$this->_engine()->minVersion(5.7) ? 'PARTITIONS ' : '') . $query);
     }
 }

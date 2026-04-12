@@ -1,8 +1,8 @@
 <?php
 
-namespace Lagdo\DbAdmin\Support\MySql\Grammar;
+namespace Lagdo\DbAdmin\Driver\MySql\Statement;
 
-use Lagdo\DbAdmin\Support\Db\Engine\Grammar\AbstractSyntax;
+use Lagdo\DbAdmin\Driver\Sql\Specific\Statement\AbstractSyntax;
 
 
 use function array_key_exists;

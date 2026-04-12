@@ -1,11 +1,11 @@
 <?php
 
-namespace Lagdo\DbAdmin\Support\MySql\Grammar;
+namespace Lagdo\DbAdmin\Driver\MySql\Statement;
 
-use Lagdo\DbAdmin\Support\Db\Engine\Grammar\AbstractTable;
-use Lagdo\DbAdmin\Support\Dto\ColumnDto;
-use Lagdo\DbAdmin\Support\Dto\TableAlterDto;
-use Lagdo\DbAdmin\Support\Dto\TableCreateDto;
+use Lagdo\DbAdmin\Driver\Sql\Specific\Statement\AbstractTable;
+use Lagdo\DbAdmin\Driver\Sql\Dto\ColumnDto;
+use Lagdo\DbAdmin\Driver\Sql\Dto\TableAlterDto;
+use Lagdo\DbAdmin\Driver\Sql\Dto\TableCreateDto;
 
 use function addcslashes;
 use function array_map;
@@ -25,7 +25,7 @@ class Table extends AbstractTable
         if (preg_match('~ GENERATED~', $column->field->default ?? '')) {
             // swap default and null
             // MariaDB doesn't support NULL on virtual columns
-            $column->field->default = $this->_driver()->flavor() === 'maria' ? "" : $column->field->nullable;
+            $column->field->default = $this->_engine()->flavor() === 'maria' ? "" : $column->field->nullable;
             $column->field->nullable = $column->field->hasDefault();
         }
         return $column->clause();
@@ -42,10 +42,10 @@ class Table extends AbstractTable
             ...$this->getForeignKeyClauses($table, 'ADD '),
         ];
 
-        $status = $table->options($this->_driver()->quote(...));
+        $status = $table->options($this->_engine()->quote(...));
         // Todo: append partitioning clauses to $status
 
-        $tableName = $this->_grammar()->escapeTableName($table->name);
+        $tableName = $this->_statement()->escapeTableName($table->name);
         $clauses = implode(', ', $clauses);
         return ["CREATE TABLE $tableName ($clauses) $status"];
     }
@@ -60,12 +60,12 @@ class Table extends AbstractTable
             $clauses[] = 'ADD ' . $this->getTableColumnClause($column) . $column->after;
         }
         foreach ($table->changedColumns as $fieldName => $column) {
-            $fieldName = $this->_grammar()->escapeId($fieldName);
+            $fieldName = $this->_statement()->escapeId($fieldName);
             // The field rename is done here.
             $clauses[] = "CHANGE $fieldName " . $this->getTableColumnClause($column) . $column->after;
         }
         foreach ($table->droppedColumns as $fieldName) {
-            $clauses[] = 'DROP ' . $this->_grammar()->escapeId($fieldName);
+            $clauses[] = 'DROP ' . $this->_statement()->escapeId($fieldName);
         }
         $clauses = [
             ...$clauses,
@@ -73,16 +73,16 @@ class Table extends AbstractTable
         ];
 
         if ($table->name !== $table->current->name) {
-            $clauses[] = 'RENAME TO ' . $this->_grammar()->escapeTableName($table->name);
+            $clauses[] = 'RENAME TO ' . $this->_statement()->escapeTableName($table->name);
         }
 
-        $status = $table->options($this->_driver()->quote(...));
+        $status = $table->options($this->_engine()->quote(...));
         // Todo: append partitioning clauses to $status
         if ($status !== '') {
             $clauses[] = $status;
         }
 
-        $tableName = $this->_grammar()->escapeTableName($table->name);
+        $tableName = $this->_statement()->escapeTableName($table->name);
         $clauses = implode(', ', $clauses);
         return ["ALTER TABLE $tableName $clauses"];
     }
@@ -92,8 +92,8 @@ class Table extends AbstractTable
      */
     public function getExportTableQueries(string $table, bool $autoIncrement, string $style): string
     {
-        $query = $this->_driver()->result("SHOW CREATE TABLE " .
-            $this->_grammar()->escapeTableName($table), 1);
+        $query = $this->_engine()->result("SHOW CREATE TABLE " .
+            $this->_statement()->escapeTableName($table), 1);
         if (!$autoIncrement) {
             $query = preg_replace('~ AUTO_INCREMENT=\d+~', '', $query); //! skip comments
         }
@@ -105,7 +105,7 @@ class Table extends AbstractTable
      */
     public function getTruncateTableQuery(string $table): string
     {
-        return "TRUNCATE " . $this->_grammar()->escapeTableName($table);
+        return "TRUNCATE " . $this->_statement()->escapeTableName($table);
     }
 
     /**
@@ -114,10 +114,10 @@ class Table extends AbstractTable
     public function getCreateTriggerQuery(string $table): string
     {
         $query = "";
-        $tableName = $this->_driver()->quote(addcslashes($table, "%_\\"));
-        foreach ($this->_driver()->rows("SHOW TRIGGERS LIKE $tableName") as $row) {
-            $query .= "\nCREATE TRIGGER " . $this->_grammar()->escapeId($row["Trigger"]) .
-                " $row[Timing] $row[Event] ON " . $this->_grammar()->escapeTableName($row["Table"]) .
+        $tableName = $this->_engine()->quote(addcslashes($table, "%_\\"));
+        foreach ($this->_engine()->rows("SHOW TRIGGERS LIKE $tableName") as $row) {
+            $query .= "\nCREATE TRIGGER " . $this->_statement()->escapeId($row["Trigger"]) .
+                " $row[Timing] $row[Event] ON " . $this->_statement()->escapeTableName($row["Table"]) .
                 " FOR EACH ROW\n$row[Statement];;\n";
         }
         return $query;
@@ -130,17 +130,17 @@ class Table extends AbstractTable
     {
         $clauses = [];
         foreach ($drop as $index) {
-            $clauses[] = 'DROP INDEX ' . $this->_grammar()->escapeId($index->name);
+            $clauses[] = 'DROP INDEX ' . $this->_statement()->escapeId($index->name);
         }
         foreach ($alter as $index) {
             $indexType = $index->type === 'PRIMARY' ? 'PRIMARY KEY' :  $index->type;
             if ($index->name !== '') {
-                $indexType .= ' ' . $this->_grammar()->escapeId($index->name);
+                $indexType .= ' ' . $this->_statement()->escapeId($index->name);
             }
             $columns = implode(', ', $index->columns);
             $clauses[] = "ADD $indexType ($columns)";
         }
-        $tableName = $this->_grammar()->escapeTableName($table);
+        $tableName = $this->_statement()->escapeTableName($table);
         return ["ALTER TABLE $tableName " . implode(', ', $clauses)];
     }
 }

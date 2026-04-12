@@ -1,9 +1,9 @@
 <?php
 
-use Lagdo\DbAdmin\Support\AbstractDriver;
-use Lagdo\DbAdmin\Support\DriverInterface;
-use Lagdo\DbAdmin\Support\MySql\Driver;
-use Lagdo\DbAdmin\Support\Utils\Utils;
+use Lagdo\DbAdmin\Driver\Driver;
+use Lagdo\DbAdmin\Driver\MySql\Engine;
+use Lagdo\DbAdmin\Driver\MySql\Statement;
+use Lagdo\DbAdmin\Driver\Utils\Utils;
 
-AbstractDriver::registerDriver('mysql', fn($di, array $options): DriverInterface =>
-    new Driver($di->g(Utils::class), $options));
+Driver::registerBuilder('mysql', fn(Utils $utils, array $options) =>
+    [new Engine($utils, $options), new Statement($utils)]);

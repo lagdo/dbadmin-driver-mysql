@@ -1,10 +1,10 @@
 <?php
 
-namespace Lagdo\DbAdmin\Support\MySql\Connection\Pdo;
+namespace Lagdo\DbAdmin\Driver\MySql\Connection\Pdo;
 
-use Lagdo\DbAdmin\Support\Db\Engine\Connection\Pdo\AbstractConnection;
-use Lagdo\DbAdmin\Support\Db\Engine\Connection\StatementInterface;
-use Lagdo\DbAdmin\Support\MySql\Connection\Traits\ConnectionTrait;
+use Lagdo\DbAdmin\Driver\Sql\Specific\Connection\Pdo\AbstractConnection;
+use Lagdo\DbAdmin\Driver\Sql\Specific\Connection\StatementInterface;
+use Lagdo\DbAdmin\Driver\MySql\Connection\Traits\ConnectionTrait;
 use PDO;
 
 /**
@@ -48,10 +48,10 @@ class Connection extends AbstractConnection
 
 
         if (($database)) {
-            $this->query("USE " . $this->_grammar()->escapeId($database));
+            $this->query("USE " . $this->_statement()->escapeId($database));
         }
         // Available in MySQLi since PHP 5.0.5
-        $this->setCharset($this->_driver()->charset());
+        $this->setCharset($this->_engine()->charset());
         $this->query("SET sql_quote_show_create = 1, autocommit = 1");
         return true;
     }
