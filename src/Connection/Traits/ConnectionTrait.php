@@ -25,11 +25,11 @@ trait ConnectionTrait
     {
         $error = preg_replace('~^You have an error.*syntax to use~U', 'Syntax error', parent::error());
         // windows-1250 - most common Windows encoding
-        // if (function_exists('iconv') && !$this->utils->str->isUtf8($error) &&
+        // if (function_exists('iconv') && !$this->_utils()->str->isUtf8($error) &&
         //     strlen($s = iconv("windows-1250", "utf-8", $error)) > strlen($error)) {
         //     $error = $s;
         // }
-        return $this->utils->str->html($error);
+        return $this->_utils()->str->html($error);
     }
 
     /**
@@ -37,7 +37,7 @@ trait ConnectionTrait
      */
     public function explain(string $query): StatementInterface|bool
     {
-        return $this->query('EXPLAIN ' . ($this->driver->minVersion(5.1) &&
-            !$this->driver->minVersion(5.7) ? 'PARTITIONS ' : '') . $query);
+        return $this->query('EXPLAIN ' . ($this->_driver()->minVersion(5.1) &&
+            !$this->_driver()->minVersion(5.7) ? 'PARTITIONS ' : '') . $query);
     }
 }

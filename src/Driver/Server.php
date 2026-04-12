@@ -19,7 +19,7 @@ class Server extends AbstractServer
      */
     protected function starting(): void
     {
-        $trans = $this->utils->trans;
+        $trans = $this->_utils()->trans;
         // Init config
         $this->config->jush = 'sql';
         $this->config->drivers = ["MySQLi", "PDO_MySQL"];
@@ -48,7 +48,7 @@ class Server extends AbstractServer
             "date|time" => ["now"],
         ];
         $this->config->editFunctions = [
-            $this->driver->numberRegex() => ["+", "-"],
+            $this->_driver()->numberRegex() => ["+", "-"],
             "date" => ["+ interval", "- interval"],
             "time" => ["addtime", "subtime"],
             "char|text" => ["concat"],
@@ -67,32 +67,32 @@ class Server extends AbstractServer
      */
     protected function connected(): void
     {
-        if ($this->driver->minVersion(5.1)) {
+        if ($this->_driver()->minVersion(5.1)) {
             $this->config->features[] = 'event';
         }
-        if ($this->driver->minVersion(8)) {
+        if ($this->_driver()->minVersion(8)) {
             $this->config->features[] = 'descidx';
         }
-        if ($this->driver->minVersion('8.0.16', '10.2.1')) {
+        if ($this->_driver()->minVersion('8.0.16', '10.2.1')) {
             $this->config->features[] = 'check';
         }
 
-        $trans = $this->utils->trans;
-        if ($this->driver->minVersion('5.7.8', 10.2)) {
+        $trans = $this->_utils()->trans;
+        if ($this->_driver()->minVersion('5.7.8', 10.2)) {
             $this->config->types[$trans->lang('Strings')]["json"] = 4294967295;
         }
-        if ($this->driver->minVersion('', 10.7)) {
+        if ($this->_driver()->minVersion('', 10.7)) {
             $this->config->types[$trans->lang('Strings')]["uuid"] = 128;
             $this->config->insertFunctions['uuid'] = ['uuid'];
         }
-        if ($this->driver->minVersion(9, '')) {
+        if ($this->_driver()->minVersion(9, '')) {
             $this->config->types[$trans->lang('Numbers')]["vector"] = 16383;
             $this->config->insertFunctions['vector'] = ['string_to_vector'];
         }
-        if ($this->driver->minVersion(5.1, '')) {
+        if ($this->_driver()->minVersion(5.1, '')) {
             $this->config->partitionBy = ["HASH", "LINEAR HASH", "KEY", "LINEAR KEY", "RANGE", "LIST"];
         }
-        if ($this->driver->minVersion(5.7, 10.2)) {
+        if ($this->_driver()->minVersion(5.7, 10.2)) {
             $this->config->generated = ["STORED", "VIRTUAL"];
         }
     }
@@ -105,15 +105,15 @@ class Server extends AbstractServer
     {
         $preferPdo = $options['prefer_pdo'] ?? false;
         if (!$preferPdo && extension_loaded("mysqli")) {
-            return new Connection\MySqli\Connection($this->driver,
-                $this->grammar, $this->utils, $options, 'MySQLi');
+            return new Connection\MySqli\Connection($this->_driver(),
+                $this->_grammar(), $this->_utils(), $options, 'MySQLi');
         }
         if (extension_loaded("pdo_mysql")) {
-            return new Connection\Pdo\Connection($this->driver,
-                $this->grammar, $this->utils, $options, 'PDO_MySQL');
+            return new Connection\Pdo\Connection($this->_driver(),
+                $this->_grammar(), $this->_utils(), $options, 'PDO_MySQL');
         }
 
-        throw new AuthException($this->utils->trans
+        throw new AuthException($this->_utils()->trans
             ->lang('No package installed to connect to a MySQL server.'));
     }
 
@@ -122,7 +122,7 @@ class Server extends AbstractServer
      */
     public function user(): string
     {
-        return $this->driver->result('SELECT USER()');
+        return $this->_driver()->result('SELECT USER()');
     }
 
     /**
@@ -202,7 +202,7 @@ class Server extends AbstractServer
     public function engines(): array
     {
         $engines = [];
-        foreach ($this->driver->rows('SHOW ENGINES') as $row) {
+        foreach ($this->_driver()->rows('SHOW ENGINES') as $row) {
             if (preg_match('~YES|DEFAULT~', $row['Support'])) {
                 $engines[] = $row['Engine'];
             }
@@ -216,7 +216,7 @@ class Server extends AbstractServer
     public function collations(): array
     {
         $collations = [];
-        foreach ($this->driver->rows('SHOW COLLATION') as $row) {
+        foreach ($this->_driver()->rows('SHOW COLLATION') as $row) {
             if ($row['Default']) {
                 $collations[$row['Charset']][-1] = $row['Collation'];
                 continue;
@@ -244,7 +244,7 @@ class Server extends AbstractServer
      */
     public function variables(): array
     {
-        return $this->driver->keyValues('SHOW VARIABLES');
+        return $this->_driver()->keyValues('SHOW VARIABLES');
     }
 
     /**
@@ -252,7 +252,7 @@ class Server extends AbstractServer
      */
     public function processes(): array
     {
-        return $this->driver->rows('SHOW FULL PROCESSLIST');
+        return $this->_driver()->rows('SHOW FULL PROCESSLIST');
     }
 
     /**
@@ -260,7 +260,7 @@ class Server extends AbstractServer
      */
     public function statusVariables(): array
     {
-        return $this->driver->keyValues('SHOW STATUS');
+        return $this->_driver()->keyValues('SHOW STATUS');
     }
 
     /**
@@ -268,7 +268,7 @@ class Server extends AbstractServer
      */
     // public function killProcess($val): bool
     // {
-    //     return $this->driver->execute('KILL ' . $this->utils->str->number($val));
+    //     return $this->_driver()->execute('KILL ' . $this->_utils()->str->number($val));
     // }
 
     /**
@@ -276,6 +276,6 @@ class Server extends AbstractServer
      */
     // public function maxConnections(): int
     // {
-    //     return $this->driver->result('SELECT @@max_connections');
+    //     return $this->_driver()->result('SELECT @@max_connections');
     // }
 }

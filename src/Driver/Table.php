@@ -32,7 +32,7 @@ class Table extends AbstractTable
     {
         return preg_match('~InnoDB|IBMDB2I~i', $tableStatus->engine ?? '')
             || (preg_match('~NDB~i', $tableStatus->engine ?? '')
-            && $this->driver->minVersion(5.6));
+            && $this->_driver()->minVersion(5.6));
     }
 
     /**
@@ -70,10 +70,10 @@ class Table extends AbstractTable
 
         $foreignKey = new ForeignKeyDto();
 
-        $foreignKey->database = $this->grammar->unescapeId($match[4] != "" ? $match[3] : $match[4]);
-        $foreignKey->table = $this->grammar->unescapeId($match[4] != "" ? $match[4] : $match[3]);
-        $foreignKey->source = array_map($this->grammar->unescapeId(...), $source[0]);
-        $foreignKey->target = array_map($this->grammar->unescapeId(...), $target[0]);
+        $foreignKey->database = $this->_grammar()->unescapeId($match[4] != "" ? $match[3] : $match[4]);
+        $foreignKey->table = $this->_grammar()->unescapeId($match[4] != "" ? $match[4] : $match[3]);
+        $foreignKey->source = array_map($this->_grammar()->unescapeId(...), $source[0]);
+        $foreignKey->target = array_map($this->_grammar()->unescapeId(...), $target[0]);
         $foreignKey->onDelete = $match[6] ?: "RESTRICT";
         $foreignKey->onUpdate = $match[7] ?: "RESTRICT";
 
@@ -87,16 +87,16 @@ class Table extends AbstractTable
     {
         static $pattern = '(?:`(?:[^`]|``)+`|"(?:[^"]|"")+")';
         $foreignKeys = [];
-        $onActions = $this->driver->actions();
-        $createTable = $this->driver->result("SHOW CREATE TABLE " .
-            $this->grammar->escapeTableName($table), 1);
+        $onActions = $this->_driver()->actions();
+        $createTable = $this->_driver()->result("SHOW CREATE TABLE " .
+            $this->_grammar()->escapeTableName($table), 1);
         if ($createTable) {
             preg_match_all("~CONSTRAINT ($pattern) FOREIGN KEY ?\\(((?:$pattern,? ?)+)\\) REFERENCES " .
                 "($pattern)(?:\\.($pattern))? \\(((?:$pattern,? ?)+)\\)(?: ON DELETE ($onActions))" .
                 "?(?: ON UPDATE ($onActions))?~", $createTable, $matches, PREG_SET_ORDER);
 
             foreach ($matches as $match) {
-                $foreignKeys[$this->grammar->unescapeId($match[1])] = $this->makeTableForeignKey($match);
+                $foreignKeys[$this->_grammar()->unescapeId($match[1])] = $this->makeTableForeignKey($match);
             }
         }
         return $foreignKeys;
@@ -108,15 +108,15 @@ class Table extends AbstractTable
     public function checkConstraints(TableDto $status): array
     {
         // From driver.inc.php
-        $database = $this->driver->quote($this->driver->database());
-        $table = $this->driver->quote($status->name);
+        $database = $this->_driver()->quote($this->_driver()->database());
+        $table = $this->_driver()->quote($status->name);
         // MariaDB contains CHECK_CONSTRAINTS.TABLE_NAME, MySQL and PostrgreSQL not
         $query = "SELECT c.CONSTRAINT_NAME, CHECK_CLAUSE
 FROM INFORMATION_SCHEMA.CHECK_CONSTRAINTS c JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS t
 ON c.CONSTRAINT_SCHEMA = t.CONSTRAINT_SCHEMA AND c.CONSTRAINT_NAME = t.CONSTRAINT_NAME
 WHERE c.CONSTRAINT_SCHEMA = $database AND t.TABLE_NAME = $table
 AND CHECK_CLAUSE NOT LIKE '% IS NOT NULL'";
-        return $this->driver->keyValues($query); // ignore default IS NOT NULL checks in PostrgreSQL
+        return $this->_driver()->keyValues($query); // ignore default IS NOT NULL checks in PostrgreSQL
     }
 
     /**
@@ -124,12 +124,12 @@ AND CHECK_CLAUSE NOT LIKE '% IS NOT NULL'";
      */
     public function partitionsInfo(string $table): PartitionDto|null
     {
-        $database = $this->driver->quote($this->driver->database());
-        $tableName = $this->driver->quote($table);
+        $database = $this->_driver()->quote($this->_driver()->database());
+        $tableName = $this->_driver()->quote($table);
         $from = "FROM information_schema.PARTITIONS WHERE TABLE_SCHEMA = $database AND TABLE_NAME = $tableName";
         $query = "SELECT PARTITION_METHOD, PARTITION_EXPRESSION, PARTITION_ORDINAL_POSITION $from
 ORDER BY PARTITION_ORDINAL_POSITION DESC LIMIT 1";
-        $result = $this->driver->execute($query)?->fetchRow();
+        $result = $this->_driver()->execute($query)?->fetchRow();
         if (!$result) {
             return null;
         }
@@ -139,7 +139,7 @@ ORDER BY PARTITION_ORDINAL_POSITION DESC LIMIT 1";
 
         $query = "SELECT PARTITION_NAME, PARTITION_DESCRIPTION $from
 AND PARTITION_NAME != '' ORDER BY PARTITION_ORDINAL_POSITION";
-        $partition = $this->driver->keyValues($query);
+        $partition = $this->_driver()->keyValues($query);
         $entity->names = array_keys($partition);
         $entity->values = array_values($partition);
 
@@ -154,7 +154,7 @@ AND PARTITION_NAME != '' ORDER BY PARTITION_ORDINAL_POSITION";
      */
     private function getRowDefaultValue(array $row, array $matchType): mixed
     {
-        $isMaria = $this->driver->flavor() === 'maria';
+        $isMaria = $this->_driver()->flavor() === 'maria';
 
         $default = $row["COLUMN_DEFAULT"] ?? null;
         if ($default === "" || $default === null) {
@@ -215,7 +215,7 @@ AND PARTITION_NAME != '' ORDER BY PARTITION_ORDINAL_POSITION";
         $privileges = $row["PRIVILEGES"] ?? '';
         $field->privileges = array_flip(explode(",", "$privileges,where,order"));
 
-        $isMaria = $this->driver->flavor() === 'maria';
+        $isMaria = $this->_driver()->flavor() === 'maria';
         $defaultValue = $this->getRowDefaultValue($row, $matchType);
         $generation = $row["GENERATION_EXPRESSION"] ?? '';
         $field->default = !$generated ? $defaultValue : ($isMaria ? $generation : stripslashes($generation));
@@ -232,10 +232,10 @@ AND PARTITION_NAME != '' ORDER BY PARTITION_ORDINAL_POSITION";
     public function fields(string $table): array
     {
         $fields = [];
-        $tableName = $this->driver->quote($table);
+        $tableName = $this->_driver()->quote($table);
         $query = "SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE()
 AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
-        $rows = $this->driver->rows($query);
+        $rows = $this->_driver()->rows($query);
         foreach ($rows as $row) {
             $field = $this->makeTableFieldDto($row);
             $fields[$field->name] = $field;
@@ -253,12 +253,12 @@ AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
     private function queryStatus(bool $fast, string $table = ''): array
     {
         // Todo: use match
-        $query = ($fast && $this->driver->minVersion(5)) ?
+        $query = ($fast && $this->_driver()->minVersion(5)) ?
             "SELECT TABLE_NAME AS Name, ENGINE AS Engine, TABLE_COMMENT AS Comment " .
             "FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() " .
-            ($table != "" ? "AND TABLE_NAME = " . $this->driver->quote($table) : "ORDER BY Name") :
-            "SHOW TABLE STATUS" . ($table != "" ? " LIKE " . $this->driver->quote(addcslashes($table, "%_\\")) : "");
-        return $this->driver->rows($query);
+            ($table != "" ? "AND TABLE_NAME = " . $this->_driver()->quote($table) : "ORDER BY Name") :
+            "SHOW TABLE STATUS" . ($table != "" ? " LIKE " . $this->_driver()->quote(addcslashes($table, "%_\\")) : "");
+        return $this->_driver()->rows($query);
     }
 
     /**
@@ -373,7 +373,7 @@ AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
     public function indexes(string $table): array
     {
         $indexes = [];
-        foreach ($this->driver->rows('SHOW INDEX FROM ' . $this->grammar->escapeTableName($table)) as $row) {
+        foreach ($this->_driver()->rows('SHOW INDEX FROM ' . $this->_grammar()->escapeTableName($table)) as $row) {
             $indexes[$row['Key_name']] = $this->makeTableIndex($row);
         }
         return $indexes;
@@ -387,7 +387,7 @@ AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
         if ($name == "") {
             return null;
         }
-        $rows = $this->driver->rows("SHOW TRIGGERS WHERE `Trigger` = " . $this->driver->quote($name));
+        $rows = $this->_driver()->rows("SHOW TRIGGERS WHERE `Trigger` = " . $this->_driver()->quote($name));
         if (!($row = reset($rows))) {
             return null;
         }
@@ -400,7 +400,7 @@ AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
     public function triggers(string $table): array
     {
         $triggers = [];
-        foreach ($this->driver->rows("SHOW TRIGGERS LIKE " . $this->driver->quote(addcslashes($table, "%_\\"))) as $row) {
+        foreach ($this->_driver()->rows("SHOW TRIGGERS LIKE " . $this->_driver()->quote(addcslashes($table, "%_\\"))) as $row) {
             $triggers[$row["Trigger"]] = new TriggerDto($row["Timing"], $row["Event"], '', '', $row["Trigger"]);
         }
         return $triggers;
@@ -423,12 +423,12 @@ AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
      */
     public function tableHelp(string $name): string
     {
-        $isMaria = $this->driver->flavor() === 'maria';
-        if ($this->driver->isInformationSchema($this->driver->database())) {
+        $isMaria = $this->_driver()->flavor() === 'maria';
+        if ($this->_driver()->isInformationSchema($this->_driver()->database())) {
             return strtolower(($isMaria ? "information-schema-$name-table/" :
                     str_replace("_", "-", $name) . "-table.html"));
         }
-        if ($this->driver->database() == "mysql") {
+        if ($this->_driver()->database() == "mysql") {
             return $isMaria ? "mysql$name-table/" : "system-database.html"; //! more precise link
         }
         return '';

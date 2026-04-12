@@ -38,15 +38,15 @@ class Query extends AbstractQuery
     public function convertField(TableFieldDto $field): string
     {
         if (preg_match("~binary~", $field->type)) {
-            return "HEX(" . $this->grammar->escapeId($field->name) . ")";
+            return "HEX(" . $this->_grammar()->escapeId($field->name) . ")";
         }
         if ($field->type == "bit") {
             // + 0 is required outside MySQLnd
-            return "BIN(" . $this->grammar->escapeId($field->name) . " + 0)";
+            return "BIN(" . $this->_grammar()->escapeId($field->name) . " + 0)";
         }
         if (preg_match("~geometry|point|linestring|polygon~", $field->type)) {
-            return ($this->driver->minVersion(8) ? "ST_" : "") .
-                "AsWKT(" . $this->grammar->escapeId($field->name) . ")";
+            return ($this->_driver()->minVersion(8) ? "ST_" : "") .
+                "AsWKT(" . $this->_grammar()->escapeId($field->name) . ")";
         }
         return '';
     }
@@ -63,7 +63,7 @@ class Query extends AbstractQuery
             $value = "CONV($value, 2, 10) + 0";
         }
         if (preg_match("~geometry|point|linestring|polygon~", $field->type)) {
-            $value = ($this->driver->minVersion(8) ? "ST_" : "") .
+            $value = ($this->_driver()->minVersion(8) ? "ST_" : "") .
                 "GeomFromText($value, SRID({$field->name}))";
         }
         return $value;

@@ -36,19 +36,19 @@ class Database extends AbstractDatabase
     public function databases(bool $flush): array
     {
         // !!! Caching and slow query handling are temporarily disabled !!!
-        $query = $this->driver->minVersion(5) ?
+        $query = $this->_driver()->minVersion(5) ?
             'SELECT SCHEMA_NAME FROM information_schema.SCHEMATA ORDER BY SCHEMA_NAME' :
             'SHOW DATABASES';
-        return $this->driver->values($query);
+        return $this->_driver()->values($query);
 
         // SHOW DATABASES can take a very long time so it is cached
         // $databases = get_session('dbs');
         // if ($databases === null) {
-        //     $query = ($this->driver->minVersion(5)
+        //     $query = ($this->_driver()->minVersion(5)
         //         ? 'SELECT SCHEMA_NAME FROM information_schema.SCHEMATA ORDER BY SCHEMA_NAME'
         //         : 'SHOW DATABASES'
         //     ); // SHOW DATABASES can be disabled by skip_show_database
-        //     $databases = ($flush ? slow_query($query) : $this->driver->values($query));
+        //     $databases = ($flush ? slow_query($query) : $this->_driver()->values($query));
         //     restart_session();
         //     set_session('dbs', $databases);
         //     stop_session();
@@ -61,8 +61,8 @@ class Database extends AbstractDatabase
      */
     public function databaseSize(string $database): int
     {
-        $statement = $this->driver->execute('SELECT SUM(data_length + index_length) ' .
-            'FROM information_schema.tables where table_schema=' . $this->driver->quote($database));
+        $statement = $this->_driver()->execute('SELECT SUM(data_length + index_length) ' .
+            'FROM information_schema.tables where table_schema=' . $this->_driver()->quote($database));
         if (is_a($statement, StatementInterface::class) && ($row = $statement->fetchRow())) {
             return intval($row[0]);
         }
@@ -75,7 +75,7 @@ class Database extends AbstractDatabase
     public function databaseCollation(string $database, array $collations): string
     {
         $collation = null;
-        $create = $this->driver->result('SHOW CREATE DATABASE ' . $this->grammar->escapeId($database), 1);
+        $create = $this->_driver()->result('SHOW CREATE DATABASE ' . $this->_grammar()->escapeId($database), 1);
         if (preg_match('~ COLLATE ([^ ]+)~', $create, $match)) {
             $collation = $match[1];
         } elseif (preg_match('~ CHARACTER SET ([^ ]+)~', $create, $match)) {
@@ -90,8 +90,8 @@ class Database extends AbstractDatabase
      */
     public function isInformationSchema(string $database): bool
     {
-        return ($this->driver->minVersion(5) && $database == 'information_schema') ||
-            ($this->driver->minVersion(5.5) && $database == 'performance_schema');
+        return ($this->_driver()->minVersion(5) && $database == 'information_schema') ||
+            ($this->_driver()->minVersion(5.5) && $database == 'performance_schema');
     }
 
     /**
@@ -108,7 +108,7 @@ class Database extends AbstractDatabase
      */
     public function tables(): array
     {
-        return $this->driver->keyValues($this->driver->minVersion(5) ?
+        return $this->_driver()->keyValues($this->_driver()->minVersion(5) ?
             'SELECT TABLE_NAME, TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME' :
             'SHOW TABLES');
     }
@@ -120,7 +120,7 @@ class Database extends AbstractDatabase
     {
         $counts = [];
         foreach ($databases as $database) {
-            $counts[$database] = count($this->driver->values('SHOW TABLES IN ' . $this->grammar->escapeId($database)));
+            $counts[$database] = count($this->_driver()->values('SHOW TABLES IN ' . $this->_grammar()->escapeId($database)));
         }
         return $counts;
     }
@@ -130,7 +130,7 @@ class Database extends AbstractDatabase
      */
     public function events(): array
     {
-        return $this->driver->rows('SHOW EVENTS');
+        return $this->_driver()->rows('SHOW EVENTS');
     }
 
     /**
@@ -138,18 +138,18 @@ class Database extends AbstractDatabase
      */
     public function routine(string $name, string $type): RoutineInfoDto|null
     {
-        $enumLength = $this->driver->enumLengthRegex();
+        $enumLength = $this->_driver()->enumLengthRegex();
         $aliases = ['bool', 'boolean', 'integer', 'double precision', 'real',
             'dec', 'numeric', 'fixed', 'national char', 'national varchar'];
         $space = "(?:\\s|/\\*[\s\S]*?\\*/|(?:#|-- )[^\n]*\n?|--\r?\n)";
-        $typePattern = "((" . implode("|", array_merge(array_keys($this->driver->types()), $aliases)) .
+        $typePattern = "((" . implode("|", array_merge(array_keys($this->_driver()->types()), $aliases)) .
             ")\\b(?:\\s*\\(((?:[^'\")]|$enumLength)++)\\))?\\s*(zerofill\\s*)?" .
             "(unsigned(?:\\s+zerofill)?)?)(?:\\s*(?:CHARSET|CHARACTER\\s+SET)" .
             "\\s*['\"]?([^'\"\\s,]+)['\"]?)?(?:\\s*COLLATE\\s*['\"]?[^'\"\\s,]+['\"]?)?"; //! store COLLATE
-        $pattern = "$space*(" . ($type == 'FUNCTION' ? '' : $this->driver->inout()) .
+        $pattern = "$space*(" . ($type == 'FUNCTION' ? '' : $this->_driver()->inout()) .
             ")?\\s*(?:`((?:[^`]|``)*)`\\s*|\\b(\\S+)\\s+)$typePattern";
 
-        $create = $this->driver->result("SHOW CREATE $type " . $this->grammar->escapeId($name), 2);
+        $create = $this->_driver()->result("SHOW CREATE $type " . $this->_grammar()->escapeId($name), 2);
         if (!$create) {
             return null;
         }
@@ -158,8 +158,8 @@ class Database extends AbstractDatabase
             "RETURNS\\s+$typePattern\\s+" : '') . "(.*)~is", $create, $match);
         $language = 'SQL'; // available in information_schema.ROUTINES.PARAMETER_STYLE;
         $query = "SELECT ROUTINE_COMMENT FROM information_schema.ROUTINES WHERE " .
-            "ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = " . $this->driver->quote($name);
-        $comment = $this->driver->result($query);
+            "ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = " . $this->_driver()->quote($name);
+        $comment = $this->_driver()->result($query);
 
         preg_match_all("~$pattern\\s*,?~is", $match[1], $matches, PREG_SET_ORDER);
         $normalizeEnum = function(array $match): string {
@@ -195,7 +195,7 @@ class Database extends AbstractDatabase
      */
     public function routines(): array
     {
-        $rows = $this->driver->rows('SELECT SPECIFIC_NAME, ROUTINE_NAME, ROUTINE_TYPE, ' .
+        $rows = $this->_driver()->rows('SELECT SPECIFIC_NAME, ROUTINE_NAME, ROUTINE_TYPE, ' .
             'DTD_IDENTIFIER FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE()');
         return array_map(fn($row) =>
             new RoutineDto($row['ROUTINE_NAME'], $row['SPECIFIC_NAME'],
@@ -207,6 +207,6 @@ class Database extends AbstractDatabase
      */
     public function routineId(string $name, array $row): string
     {
-        return $this->grammar->escapeId($name);
+        return $this->_grammar()->escapeId($name);
     }
 }

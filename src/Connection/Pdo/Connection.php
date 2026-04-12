@@ -48,10 +48,10 @@ class Connection extends AbstractConnection
 
 
         if (($database)) {
-            $this->query("USE " . $this->grammar->escapeId($database));
+            $this->query("USE " . $this->_grammar()->escapeId($database));
         }
         // Available in MySQLi since PHP 5.0.5
-        $this->setCharset($this->driver->charset());
+        $this->setCharset($this->_driver()->charset());
         $this->query("SET sql_quote_show_create = 1, autocommit = 1");
         return true;
     }

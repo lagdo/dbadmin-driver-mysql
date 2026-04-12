@@ -27,8 +27,8 @@ class Syntax extends AbstractSyntax
         $match = array_key_exists('Command', $process) &&
             preg_match('~Query|Killed~', $process['Command']);
         if ($key === 'Info' && $match && $val !== '') {
-            return '<code>' . $this->utils->str->shortenUtf8($val, 50) .
-                '</code>' . $this->utils->trans->lang('Clone');
+            return '<code>' . $this->_utils()->str->shortenUtf8($val, 50) .
+                '</code>' . $this->_utils()->lang('Clone');
         }
         return parent::processAttr($process, $key, $val);
     }
