@@ -269,7 +269,7 @@ AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
     private function makeStatus(array $row): TableDto
     {
         $status = new TableDto($row['Name']);
-        $status->engine = $row['Engine'];
+        $status->engine = $row['Engine'] ?? '';
         if ($row["Engine"] == "InnoDB") {
             // ignore internal comment, unnecessary since MySQL 5.1.21
             $status->comment = preg_replace('~(?:(.+); )?InnoDB free: .*~', '\1', $row["Comment"]);
@@ -324,7 +324,7 @@ AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
      */
     public function isView(TableDto $tableStatus): bool
     {
-        return $tableStatus->engine === null;
+        return $tableStatus->engine === '';
     }
 
     /**

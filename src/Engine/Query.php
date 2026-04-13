@@ -6,12 +6,12 @@ use Lagdo\DbAdmin\Driver\Sql\Specific\Engine\AbstractQuery;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TableFieldDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TableDto;
 
-use function count;
 use function array_keys;
+use function count;
 use function implode;
-use function strlen;
 use function preg_match;
 use function preg_replace;
+use function strlen;
 
 class Query extends AbstractQuery
 {
@@ -101,6 +101,6 @@ class Query extends AbstractQuery
      */
     public function countRows(TableDto $tableStatus, array $where): int|null
     {
-        return (!empty($where) || $tableStatus->engine != 'InnoDB' ? null : count($tableStatus->rows));
+        return !empty($where) || $tableStatus->engine != 'InnoDB' ? null : $tableStatus->rowCount;
     }
 }
