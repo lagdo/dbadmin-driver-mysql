@@ -2,10 +2,10 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Connection\MySqli;
 
-use Lagdo\DbAdmin\Driver\Sql\Specific\Connection\AbstractConnection;
-use Lagdo\DbAdmin\Driver\Sql\Specific\Connection\PreparedStatement;
-use Lagdo\DbAdmin\Driver\Sql\Specific\Connection\StatementInterface;
 use Lagdo\DbAdmin\Driver\MySql\Connection\Traits\ConnectionTrait;
+use Lagdo\DbAdmin\Driver\Sql\Connection\AbstractConnection;
+use Lagdo\DbAdmin\Driver\Sql\Connection\PreparedStatement;
+use Lagdo\DbAdmin\Driver\Sql\Connection\StatementInterface;
 
 use function ini_get;
 use function intval;

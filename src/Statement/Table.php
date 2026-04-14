@@ -2,10 +2,10 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Statement;
 
-use Lagdo\DbAdmin\Driver\Sql\Specific\Statement\AbstractTable;
 use Lagdo\DbAdmin\Driver\Sql\Dto\ColumnDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TableAlterDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TableCreateDto;
+use Lagdo\DbAdmin\Driver\Sql\Specific\Statement\AbstractTable;
 
 use function addcslashes;
 use function array_map;

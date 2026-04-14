@@ -2,7 +2,7 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Connection\MySqli;
 
-use Lagdo\DbAdmin\Driver\Sql\Specific\Connection\StatementInterface;
+use Lagdo\DbAdmin\Driver\Sql\Connection\StatementInterface;
 use Lagdo\DbAdmin\Driver\Sql\Dto\StatementFieldDto;
 use mysqli_result;
 

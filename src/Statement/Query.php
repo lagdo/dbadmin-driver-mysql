@@ -2,9 +2,9 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Statement;
 
-use Lagdo\DbAdmin\Driver\Sql\Specific\Statement\AbstractQuery;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TableFieldDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TableSelectDto;
+use Lagdo\DbAdmin\Driver\Sql\Specific\Statement\AbstractQuery;
 
 use function count;
 use function preg_match;

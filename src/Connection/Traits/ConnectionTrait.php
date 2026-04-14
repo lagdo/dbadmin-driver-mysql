@@ -2,7 +2,7 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Connection\Traits;
 
-use Lagdo\DbAdmin\Driver\Sql\Specific\Connection\StatementInterface;
+use Lagdo\DbAdmin\Driver\Sql\Connection\StatementInterface;
 
 use function preg_match;
 use function preg_replace;

@@ -4,7 +4,6 @@ namespace Lagdo\DbAdmin\Driver\MySql\Statement;
 
 use Lagdo\DbAdmin\Driver\Sql\Specific\Statement\AbstractSyntax;
 
-
 use function array_key_exists;
 use function preg_match;
 use function str_replace;

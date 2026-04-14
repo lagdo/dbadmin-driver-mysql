@@ -2,11 +2,11 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Engine;
 
-use Lagdo\DbAdmin\Driver\Sql\Specific\Connection\AbstractConnection;
-use Lagdo\DbAdmin\Driver\Sql\Specific\Engine\AbstractServer;
-use Lagdo\DbAdmin\Driver\Sql\Dto\UserDto;
 use Lagdo\DbAdmin\Driver\Exception\AuthException;
 use Lagdo\DbAdmin\Driver\MySql\Connection;
+use Lagdo\DbAdmin\Driver\Sql\Connection\AbstractConnection;
+use Lagdo\DbAdmin\Driver\Sql\Dto\UserDto;
+use Lagdo\DbAdmin\Driver\Sql\Specific\Engine\AbstractServer;
 
 use function extension_loaded;
 use function preg_match;

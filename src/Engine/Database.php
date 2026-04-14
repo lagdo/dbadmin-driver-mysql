@@ -2,11 +2,11 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Engine;
 
-use Lagdo\DbAdmin\Driver\Sql\Specific\Connection\StatementInterface;
-use Lagdo\DbAdmin\Driver\Sql\Specific\Engine\AbstractDatabase;
+use Lagdo\DbAdmin\Driver\Sql\Connection\StatementInterface;
 use Lagdo\DbAdmin\Driver\Sql\Dto\FieldType;
 use Lagdo\DbAdmin\Driver\Sql\Dto\RoutineDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\RoutineInfoDto;
+use Lagdo\DbAdmin\Driver\Sql\Specific\Engine\AbstractDatabase;
 
 use function addcslashes;
 use function array_keys;

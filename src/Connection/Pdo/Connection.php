@@ -2,9 +2,9 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Connection\Pdo;
 
-use Lagdo\DbAdmin\Driver\Sql\Specific\Connection\Pdo\AbstractConnection;
-use Lagdo\DbAdmin\Driver\Sql\Specific\Connection\StatementInterface;
 use Lagdo\DbAdmin\Driver\MySql\Connection\Traits\ConnectionTrait;
+use Lagdo\DbAdmin\Driver\Sql\Connection\Pdo\AbstractConnection;
+use Lagdo\DbAdmin\Driver\Sql\Connection\StatementInterface;
 use PDO;
 
 /**
