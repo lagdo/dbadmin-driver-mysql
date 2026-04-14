@@ -1,15 +1,15 @@
 <?php
 
-namespace Lagdo\DbAdmin\Support\MySql\Tests;
+namespace Lagdo\DbAdmin\Driver\MySql\Tests;
 
-use Lagdo\DbAdmin\Support\Db\Engine\Driver\AbstractConnection;
-use Lagdo\DbAdmin\Support\Db\Fake\DriverTrait;
-use Lagdo\DbAdmin\Support\Db\Fake\Translator;
-use Lagdo\DbAdmin\Support\Db\Fake\Connection;
-use Lagdo\DbAdmin\Support\MySql\Driver as MySqlDriver;
-use Lagdo\DbAdmin\Support\Utils\Str;
-use Lagdo\DbAdmin\Support\Utils\Utils;
-use Lagdo\DbAdmin\Support\Utils\Input;
+use Lagdo\DbAdmin\Driver\Sql\Connection\AbstractConnection;
+use Lagdo\DbAdmin\Driver\Tests\Db\Fake\DriverTrait;
+use Lagdo\DbAdmin\Driver\Tests\Db\Fake\Translator;
+use Lagdo\DbAdmin\Driver\Tests\Db\Fake\Connection;
+use Lagdo\DbAdmin\Driver\MySql\Engine as MySqlDriver;
+use Lagdo\DbAdmin\Driver\Utils\Str;
+use Lagdo\DbAdmin\Driver\Utils\Utils;
+use Lagdo\DbAdmin\Driver\Utils\Input;
 
 class Driver extends MySqlDriver
 {
@@ -29,7 +29,7 @@ class Driver extends MySqlDriver
      */
     public function createConnection(array $options): AbstractConnection|null
     {
-        $this->connection = new Connection($this, $this->grammar(), $this->utils, $options, 'test');
+        $this->connection = new Connection($this, $this->_statement(), $this->utils, $options, 'test');
         $this->testConnection = $this->connection;
 
         return $this->connection;
