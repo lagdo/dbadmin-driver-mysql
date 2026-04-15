@@ -20,7 +20,6 @@
         "lagdo/dbadmin-driver": "0.22.*"
     },
     "require-dev": {
-        "pestphp/pest": "^2.0",
         "phpunit/phpunit": "^9.5",
         "behat/behat": "^3.10",
         "dvdoug/behat-code-coverage": "5.0.*",
