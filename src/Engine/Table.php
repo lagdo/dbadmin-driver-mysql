@@ -190,10 +190,9 @@ AND PARTITION_NAME != '' ORDER BY PARTITION_ORDINAL_POSITION";
     private function makeTableFieldDto(array $row): TableFieldDto
     {
         $field = new TableFieldDto();
-
         $field->fullType = $row["COLUMN_TYPE"];
-        $extra = $row["EXTRA"];
 
+        $extra = $row["EXTRA"];
         // https://mariadb.com/kb/en/library/show-columns/
         // https://github.com/vrana/adminer/pull/359#pullrequestreview-276677186
         preg_match('~^(VIRTUAL|PERSISTENT|STORED)~', $extra, $generated);
@@ -216,10 +215,10 @@ AND PARTITION_NAME != '' ORDER BY PARTITION_ORDINAL_POSITION";
         $privileges = $row["PRIVILEGES"] ?? '';
         $field->privileges = array_flip(explode(",", "$privileges,where,order"));
 
-        $isMaria = $this->_engine()->flavor() === 'maria';
         $defaultValue = $this->getRowDefaultValue($row, $matchType);
         $generation = $row["GENERATION_EXPRESSION"] ?? '';
-        $field->default = !$generated ? $defaultValue : ($isMaria ? $generation : stripslashes($generation));
+        $field->default = !$generated ? $defaultValue :
+            ($this->_engine()->maria() ? $generation : stripslashes($generation));
 
         $generated = $generated[1] ?? '';
         $field->generated = $generated === "PERSISTENT" ? "STORED" : $generated;
@@ -234,8 +233,9 @@ AND PARTITION_NAME != '' ORDER BY PARTITION_ORDINAL_POSITION";
     {
         $fields = [];
         $tableName = $this->_engine()->quote($table);
-        $query = "SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE()
-AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
+        $query = "SELECT * FROM information_schema.COLUMNS
+WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = $tableName
+ORDER BY ORDINAL_POSITION";
         $rows = $this->_engine()->rows($query);
         foreach ($rows as $row) {
             $field = $this->makeTableFieldDto($row);
@@ -347,35 +347,31 @@ AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
      */
     private function getTableIndexType(array $row): string
     {
-        $name = $row['Key_name'];
-        if ($name === 'PRIMARY') {
-            return 'PRIMARY';
-        }
-        if ($row['Index_type'] === 'FULLTEXT') {
-            return 'FULLTEXT';
-        }
-        if (!$row['Non_unique']) {
-            return 'UNIQUE';
-        }
-        if ($row['Index_type'] === 'SPATIAL') {
-            return 'SPATIAL';
-        }
-        return 'INDEX';
+        return match(true) {
+            $row['Key_name'] === 'PRIMARY' => 'PRIMARY',
+            $row['Index_type'] === 'FULLTEXT' => 'FULLTEXT',
+            !$row['Non_unique'] => 'UNIQUE',
+            $row['Index_type'] === 'SPATIAL' => 'SPATIAL',
+            default => 'INDEX',
+        };
     }
 
     /**
+     * @param IndexDto $index
      * @param array $row
      *
      * @return IndexDto
      */
-    private function makeTableIndex(array $row): IndexDto
+    private function fillTableIndex(IndexDto $index, array $row): IndexDto
     {
-        $index = new IndexDto();
+        $type = $row["Index_type"];
 
+        $index->name = $row['Key_name'];
         $index->type = $this->getTableIndexType($row);
         $index->columns[] = $row['Column_name'];
-        $index->lengths[] = ($row['Index_type'] == 'SPATIAL' ? null : $row['Sub_part']);
+        $index->lengths[] = $type === 'SPATIAL' ? null : $row['Sub_part'];
         $index->descs[] = null;
+        $index->algorithm = $type;
 
         return $index;
     }
@@ -385,9 +381,13 @@ AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
      */
     public function indexes(string $table): array
     {
+        $tableName = $this->_statement()->escapeTableName($table);
+        $rows = $this->_engine()->rows("SHOW INDEX FROM $tableName");
         $indexes = [];
-        foreach ($this->_engine()->rows('SHOW INDEX FROM ' . $this->_statement()->escapeTableName($table)) as $row) {
-            $indexes[$row['Key_name']] = $this->makeTableIndex($row);
+        foreach ($rows as $row) {
+            $name = $row['Key_name'];
+            $indexes[$name] ??= new IndexDto();
+            $this->fillTableIndex($indexes[$name], $row);
         }
         return $indexes;
     }
