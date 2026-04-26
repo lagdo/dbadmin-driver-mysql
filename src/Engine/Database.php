@@ -39,7 +39,7 @@ class Database extends AbstractDatabase
         $query = $this->_engine()->minVersion(5) ?
             'SELECT SCHEMA_NAME FROM information_schema.SCHEMATA ORDER BY SCHEMA_NAME' :
             'SHOW DATABASES';
-        return $this->_engine()->values($query);
+        return $this->_engine()->columnValues($query);
 
         // SHOW DATABASES can take a very long time so it is cached
         // $databases = get_session('dbs');
@@ -99,8 +99,7 @@ class Database extends AbstractDatabase
      */
     public function isSystemSchema(string $database): bool
     {
-        return in_array($database, ['sys', 'mysql',
-            'performance_schema', 'information_schema']);
+        return in_array($database, ['sys', 'mysql', 'performance_schema', 'information_schema']);
     }
 
     /**
@@ -108,9 +107,8 @@ class Database extends AbstractDatabase
      */
     public function tables(): array
     {
-        return $this->_engine()->keyValues($this->_engine()->minVersion(5) ?
-            'SELECT TABLE_NAME, TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME' :
-            'SHOW TABLES');
+        return $this->_engine()->keyValues('SELECT TABLE_NAME, TABLE_TYPE ' .
+            'FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME');
     }
 
     /**
@@ -120,7 +118,8 @@ class Database extends AbstractDatabase
     {
         $counts = [];
         foreach ($databases as $database) {
-            $counts[$database] = count($this->_engine()->values('SHOW TABLES IN ' . $this->_statement()->escapeId($database)));
+            $query = 'SHOW TABLES IN ' . $this->_statement()->escapeId($database);
+            $counts[$database] = count($this->_engine()->columnValues($query));
         }
         return $counts;
     }

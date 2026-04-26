@@ -10,6 +10,7 @@ use Lagdo\DbAdmin\Driver\Sql\Dto\TableFieldDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TriggerDto;
 use Lagdo\DbAdmin\Driver\Sql\Specific\Engine\AbstractTable;
 
+use function addcslashes;
 use function array_flip;
 use function array_pad;
 use function array_map;
@@ -70,8 +71,8 @@ class Table extends AbstractTable
 
         $foreignKey = new ForeignKeyDto();
 
-        $foreignKey->database = $this->_statement()->unescapeId($match[4] != "" ? $match[3] : $match[4]);
-        $foreignKey->table = $this->_statement()->unescapeId($match[4] != "" ? $match[4] : $match[3]);
+        $foreignKey->database = $this->_statement()->unescapeId($match[4] != '' ? $match[3] : $match[4]);
+        $foreignKey->table = $this->_statement()->unescapeId($match[4] != '' ? $match[4] : $match[3]);
         $foreignKey->source = array_map($this->_statement()->unescapeId(...), $source[0]);
         $foreignKey->target = array_map($this->_statement()->unescapeId(...), $target[0]);
         $foreignKey->onDelete = $match[6] ?: "RESTRICT";
@@ -157,7 +158,7 @@ AND PARTITION_NAME != '' ORDER BY PARTITION_ORDINAL_POSITION";
         $isMaria = $this->_engine()->flavor() === 'maria';
 
         $default = $row["COLUMN_DEFAULT"] ?? null;
-        if ($default === "" || $default === null) {
+        if ($default === '' || $default === null) {
             return $default;
         }
 
@@ -207,11 +208,11 @@ AND PARTITION_NAME != '' ORDER BY PARTITION_ORDINAL_POSITION";
         $field->nullable = $row["IS_NULLABLE"] === "YES";
         $field->autoIncrement = $extra === "auto_increment";
         $field->collation = $row["COLLATION_NAME"] ?? '';
-        $field->comment = $row["COLUMN_COMMENT"] ?? '';
+        $field->comment = $row["COLUMN_COMMENT"] ?? null;
         $field->primary = $row["COLUMN_KEY"] === "PRI";
  
         //! available since MySQL 5.1.23
-        $field->onUpdate = preg_match('~\bon update (\w+)~i', $extra, $match) ? $match[1] : "";
+        $field->onUpdate = preg_match('~\bon update (\w+)~i', $extra, $match) ? $match[1] : '';
         $privileges = $row["PRIVILEGES"] ?? '';
         $field->privileges = array_flip(explode(",", "$privileges,where,order"));
 
@@ -252,31 +253,45 @@ AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
      */
     private function queryStatus(bool $fast, string $table = ''): array
     {
-        // Todo: use match
-        $query = ($fast && $this->_engine()->minVersion(5)) ?
-            "SELECT TABLE_NAME AS Name, ENGINE AS Engine, TABLE_COMMENT AS Comment " .
-            "FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() " .
-            ($table != "" ? "AND TABLE_NAME = " . $this->_engine()->quote($table) : "ORDER BY Name") :
-            "SHOW TABLE STATUS" . ($table != "" ? " LIKE " . $this->_engine()->quote(addcslashes($table, "%_\\")) : "");
+        $tableName = $this->_engine()->quote($table);
+        $tableNameLike = $this->_engine()->quote(addcslashes($table, "%_\\"));
+        $query = $fast ? "SELECT TABLE_NAME AS Name, ENGINE AS Engine, TABLE_COMMENT " .
+            "AS Comment FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()" .
+            ($table !== '' ? " AND TABLE_NAME = $tableName" : " ORDER BY Name") :
+            "SHOW TABLE STATUS" . ($table !== '' ? " LIKE $tableNameLike" : '');
         return $this->_engine()->rows($query);
     }
 
     /**
      * @param array $row
+     * @param string $table
      *
      * @return TableDto
      */
-    private function makeStatus(array $row): TableDto
+    private function makeStatus(array $row, string $table = ''): TableDto
     {
         $status = new TableDto($row['Name']);
         $status->engine = $row['Engine'] ?? '';
-        if ($row["Engine"] == "InnoDB") {
-            // ignore internal comment, unnecessary since MySQL 5.1.21
-            $status->comment = preg_replace('~(?:(.+); )?InnoDB free: .*~', '\1', $row["Comment"]);
+        $status->collation = $row['Collation'] ?? '';
+        $status->hasAutoIncrement = isset($row['Auto_increment']);
+        $status->autoIncrement = $row['Auto_increment'] ?? 0;
+        $status->dataLength = $row['Data_length'] ?? null;
+        $status->indexLength = $row['Index_length'] ?? null;
+        $status->dataFree = $row['Data_free'] ?? null;
+        $status->rowCount = $row['Rows'] ?? null;
+        $status->comment = $row['Comment'] ?? null;
+
+        if (!isset($row["Engine"])) {
+            $status->comment = '';
         }
-        // if (!isset($row["Engine"])) {
-        //     $row["Comment"] = "";
-        // }
+        elseif ($row["Engine"] === "InnoDB" && $status->comment !== null) {
+            // ignore internal comment, unnecessary since MySQL 5.1.21
+            $status->comment = preg_replace('~(?:(.+); )?InnoDB free: .*~', '\1', $status->comment);
+        }
+        if ($table !== '') {
+            // MariaDB: Table name is returned as lowercase on macOS, so we fix it here.
+            $status->name = $table;
+        }
 
         return $status;
     }
@@ -287,10 +302,8 @@ AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
     public function tableStatus(string $table, bool $fast = false): TableDto|null
     {
         $rows = $this->queryStatus($fast, $table);
-        if (!($row = reset($rows))) {
-            return null;
-        }
-        return $this->makeStatus($row);
+        $row = reset($rows);
+        return !$row ? null : $this->makeStatus($row, $table);
     }
 
     /**
@@ -384,7 +397,7 @@ AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
      */
     public function trigger(string $name, string $table = ''): TriggerDto|null
     {
-        if ($name == "") {
+        if ($name == '') {
             return null;
         }
         $rows = $this->_engine()->rows("SHOW TRIGGERS WHERE `Trigger` = " . $this->_engine()->quote($name));
