@@ -212,8 +212,8 @@ AND PARTITION_NAME != '' ORDER BY PARTITION_ORDINAL_POSITION";
  
         //! available since MySQL 5.1.23
         $field->onUpdate = preg_match('~\bon update (\w+)~i', $extra, $match) ? $match[1] : '';
-        $privileges = $row["PRIVILEGES"] ?? '';
-        $field->privileges = array_flip(explode(",", "$privileges,where,order"));
+        $privileges = explode(",", $row["PRIVILEGES"] ?? '');
+        $field->privileges = array_flip([...$privileges, 'where', 'order']);
 
         $defaultValue = $this->getRowDefaultValue($row, $matchType);
         $generation = $row["GENERATION_EXPRESSION"] ?? '';
@@ -282,9 +282,9 @@ ORDER BY ORDINAL_POSITION";
         $status->comment = $row['Comment'] ?? null;
 
         if (!isset($row["Engine"])) {
-            $status->comment = '';
+            $status->comment = null;
         }
-        elseif ($row["Engine"] === "InnoDB" && $status->comment !== null) {
+        if ($status->comment !== null && $row["Engine"] === "InnoDB") {
             // ignore internal comment, unnecessary since MySQL 5.1.21
             $status->comment = preg_replace('~(?:(.+); )?InnoDB free: .*~', '\1', $status->comment);
         }
