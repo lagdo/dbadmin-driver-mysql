@@ -2,7 +2,8 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Statement;
 
-use Lagdo\DbAdmin\Driver\Sql\Dto\ColumnDto;
+use Lagdo\DbAdmin\Driver\Sql\Dto\ColumnInputDto;
+use Lagdo\DbAdmin\Driver\Sql\Dto\IndexDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TableAlterDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TableCreateDto;
 use Lagdo\DbAdmin\Driver\Sql\Specific\Statement\AbstractTable;
@@ -16,19 +17,19 @@ use function preg_replace;
 class Table extends AbstractTable
 {
     /**
-     * @param ColumnDto $column
+     * @param ColumnInputDto $input
      *
      * @return string
      */
-    private function getTableColumnClause(ColumnDto $column): string
+    private function getTableColumnClause(ColumnInputDto $input): string
     {
-        if (preg_match('~ GENERATED~', $column->field->default ?? '')) {
+        if (preg_match('~ GENERATED~', $input->column->default ?? '')) {
             // swap default and null
-            // MariaDB doesn't support NULL on virtual columns
-            $column->field->default = $this->_engine()->flavor() === 'maria' ? "" : $column->field->nullable;
-            $column->field->nullable = $column->field->hasDefault();
+            // MariaDB doesn't support NULL on virtual inputs
+            $input->column->default = $this->_engine()->maria() ? '' : $input->column->nullable;
+            $input->column->nullable = $input->column->hasDefault();
         }
-        return $column->clause();
+        return $input->clauses();
     }
 
     /**
@@ -36,7 +37,7 @@ class Table extends AbstractTable
      */
     public function getCreateTableQueries(TableCreateDto $table): array
     {
-        $clauses = array_map($this->getTableColumnClause(...), $table->columns);
+        $clauses = array_map($this->getTableColumnClause(...), $table->inputs['added']);
         $clauses = [
             ...$clauses,
             ...$this->getForeignKeyClauses($table, 'ADD '),
@@ -56,16 +57,18 @@ class Table extends AbstractTable
     public function getAlterTableQueries(TableAlterDto $table): array
     {
         $clauses = [];
-        foreach ($table->addedColumns as $column) {
-            $clauses[] = 'ADD ' . $this->getTableColumnClause($column) . $column->after;
+        foreach ($table->inputs['added'] as $input) {
+            $columnClause = $this->getTableColumnClause($input);
+            $clauses[] = "ADD $columnClause{$input->after}";
         }
-        foreach ($table->changedColumns as $fieldName => $column) {
-            $fieldName = $this->_statement()->escapeId($fieldName);
-            // The field rename is done here.
-            $clauses[] = "CHANGE $fieldName " . $this->getTableColumnClause($column) . $column->after;
+        foreach ($table->inputs['edited'] as $input) {
+            $columnName = $this->_statement()->escapeId($input->column->name);
+            // The column rename is done here.
+            $columnClause = $this->getTableColumnClause($input);
+            $clauses[] = "CHANGE $columnName $columnClause{$input->after}";
         }
-        foreach ($table->droppedColumns as $fieldName) {
-            $clauses[] = 'DROP ' . $this->_statement()->escapeId($fieldName);
+        foreach ($table->droppedColumns as $columnName) {
+            $clauses[] = 'DROP ' . $this->_statement()->escapeId($columnName);
         }
         $clauses = [
             ...$clauses,
@@ -84,6 +87,7 @@ class Table extends AbstractTable
 
         $tableName = $this->_statement()->escapeTableName($table->name);
         $clauses = implode(', ', $clauses);
+
         return ["ALTER TABLE $tableName $clauses"];
     }
 
@@ -97,6 +101,7 @@ class Table extends AbstractTable
         if (!$autoIncrement) {
             $query = preg_replace('~ AUTO_INCREMENT=\d+~', '', $query); //! skip comments
         }
+
         return $query;
     }
 
@@ -113,14 +118,17 @@ class Table extends AbstractTable
      */
     public function getCreateTriggerQuery(string $table): string
     {
-        $query = "";
         $tableName = $this->_engine()->quote(addcslashes($table, "%_\\"));
-        foreach ($this->_engine()->rows("SHOW TRIGGERS LIKE $tableName") as $row) {
-            $query .= "\nCREATE TRIGGER " . $this->_statement()->escapeId($row["Trigger"]) .
-                " $row[Timing] $row[Event] ON " . $this->_statement()->escapeTableName($row["Table"]) .
-                " FOR EACH ROW\n$row[Statement];;\n";
-        }
-        return $query;
+        $queries = array_map(function(array $row) {
+            $trigger = $this->_statement()->escapeId($row['Trigger']);
+            $triggerTable = $this->_statement()->escapeTableName($row['Table']);
+            return "
+CREATE TRIGGER $trigger {$row['Timing']} {$row['Event']} ON $triggerTable FOR EACH ROW
+{$row['Statement']};;
+";
+        }, $this->_engine()->rows("SHOW TRIGGERS LIKE $tableName"));
+
+        return implode('', $queries);
     }
 
     /**
@@ -128,18 +136,18 @@ class Table extends AbstractTable
      */
     public function getAlterIndexQueries(string $table, array $alter, array $drop): array
     {
-        $clauses = [];
-        foreach ($drop as $index) {
-            $clauses[] = 'DROP INDEX ' . $this->_statement()->escapeId($index->name);
-        }
-        foreach ($alter as $index) {
+        $dropClauses = array_map(fn(IndexDto $index) =>
+            'DROP INDEX ' . $this->_statement()->escapeId($index->name), $drop);
+        $alterClauses = array_map(function(IndexDto $index) {
             $indexType = $index->type === 'PRIMARY' ? 'PRIMARY KEY' :  $index->type;
             if ($index->name !== '') {
                 $indexType .= ' ' . $this->_statement()->escapeId($index->name);
             }
             $columns = implode(', ', $index->columns);
-            $clauses[] = "ADD $indexType ($columns)";
-        }
+            return "ADD $indexType ($columns)";
+        }, $alter);
+        $clauses = [...$dropClauses, ...$alterClauses];
+
         $tableName = $this->_statement()->escapeTableName($table);
         return ["ALTER TABLE $tableName " . implode(', ', $clauses)];
     }

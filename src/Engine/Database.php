@@ -3,15 +3,15 @@
 namespace Lagdo\DbAdmin\Driver\MySql\Engine;
 
 use Lagdo\DbAdmin\Driver\Sql\Connection\StatementInterface;
-use Lagdo\DbAdmin\Driver\Sql\Dto\FieldType;
+use Lagdo\DbAdmin\Driver\Sql\Dto\ColumnType;
 use Lagdo\DbAdmin\Driver\Sql\Dto\RoutineDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\RoutineInfoDto;
 use Lagdo\DbAdmin\Driver\Sql\Specific\Engine\AbstractDatabase;
 
 use function addcslashes;
+use function array_combine;
 use function array_keys;
 use function array_map;
-use function array_merge;
 use function count;
 use function implode;
 use function intval;
@@ -61,12 +61,10 @@ class Database extends AbstractDatabase
      */
     public function databaseSize(string $database): int
     {
-        $statement = $this->_engine()->execute('SELECT SUM(data_length + index_length) ' .
-            'FROM information_schema.tables where table_schema=' . $this->_engine()->quote($database));
-        if (is_a($statement, StatementInterface::class) && ($row = $statement->fetchRow())) {
-            return intval($row[0]);
-        }
-        return 0;
+        $statement = $this->_engine()->execute("SELECT SUM(data_length + index_length)
+FROM information_schema.tables where table_schema = " . $this->_engine()->quote($database));
+        return is_a($statement, StatementInterface::class) && ($row = $statement->fetchRow()) ?
+            intval($row[0]) : 0;
     }
 
     /**
@@ -74,15 +72,15 @@ class Database extends AbstractDatabase
      */
     public function databaseCollation(string $database, array $collations): string
     {
-        $collation = null;
-        $create = $this->_engine()->result('SHOW CREATE DATABASE ' . $this->_statement()->escapeId($database), 1);
-        if (preg_match('~ COLLATE ([^ ]+)~', $create, $match)) {
-            $collation = $match[1];
-        } elseif (preg_match('~ CHARACTER SET ([^ ]+)~', $create, $match)) {
-            // default collation
-            $collation = $collations[$match[1]][-1];
-        }
-        return $collation;
+        $databaseName = $this->_statement()->escapeId($database);
+        $create = $this->_engine()->result("SHOW CREATE DATABASE $databaseName", 1);
+
+        return match(true) {
+            preg_match('~ COLLATE ([^ ]+)~', $create, $match) => $match[1],
+            preg_match('~ CHARACTER SET ([^ ]+)~', $create, $match) =>
+                $collations[$match[1]][-1], // default collation
+            default => null,
+        };
     }
 
     /**
@@ -107,8 +105,8 @@ class Database extends AbstractDatabase
      */
     public function tables(): array
     {
-        return $this->_engine()->keyValues('SELECT TABLE_NAME, TABLE_TYPE ' .
-            'FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME');
+        return $this->_engine()->keyValues("SELECT TABLE_NAME, TABLE_TYPE
+FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME");
     }
 
     /**
@@ -116,12 +114,12 @@ class Database extends AbstractDatabase
      */
     public function countTables(array $databases): array
     {
-        $counts = [];
-        foreach ($databases as $database) {
+        $counts = array_map(function(string $database) {
             $query = 'SHOW TABLES IN ' . $this->_statement()->escapeId($database);
-            $counts[$database] = count($this->_engine()->columnValues($query));
-        }
-        return $counts;
+            return count($this->_engine()->columnValues($query));
+        }, $databases);
+
+        return array_combine($databases, $counts);
     }
 
     /**
@@ -133,59 +131,83 @@ class Database extends AbstractDatabase
     }
 
     /**
+     * @param array $match
+     *
+     * @return string
+     */
+    private function normalizeEnum(array $match): string
+    {
+        $enumValue = $match[0];
+        $firstChar = $enumValue[0];
+        $enumValue = str_replace("$firstChar$firstChar", $firstChar, substr($enumValue, 1, -1));
+
+        return "'" . str_replace("'", "''", addcslashes(stripcslashes($enumValue), '\\')) . "'";
+    }
+
+    /**
+     * @param array $param
+     *
+     * @return ColumnType
+     */
+    private function makeRoutineColumn(array $param): ColumnType
+    {
+        $enumLength = $this->_engine()->enumLengthRegex();
+        $name = str_replace("``", "`", $param[2]) . $param[3];
+        $type = strtolower($param[5]);
+        $length = preg_replace_callback("~$enumLength~s",
+            $this->normalizeEnum(...), $param[6] ?? '');
+        $inout = strtoupper($param[1]);
+        $fullType = $param[4];
+        $collation = strtolower($param[9] ?? '');
+        $unsigned = strtolower(preg_replace('~\s+~', ' ',
+            trim(($param[8] ?? '') . ' ' . ($param[7] ?? ''))));
+        $nullable = 1;
+
+        return new ColumnType(name: $name, type: $type, length: $length,
+            inout: $inout, fullType: $fullType, collation: $collation,
+            unsigned: $unsigned, nullable: $nullable);
+    }
+
+    /**
      * @inheritDoc
      */
     public function routine(string $name, string $type): RoutineInfoDto|null
     {
-        $enumLength = $this->_engine()->enumLengthRegex();
+        $types = array_keys($this->_engine()->types());
         $aliases = ['bool', 'boolean', 'integer', 'double precision', 'real',
             'dec', 'numeric', 'fixed', 'national char', 'national varchar'];
-        $space = "(?:\\s|/\\*[\s\S]*?\\*/|(?:#|-- )[^\n]*\n?|--\r?\n)";
-        $typePattern = "((" . implode("|", array_merge(array_keys($this->_engine()->types()), $aliases)) .
-            ")\\b(?:\\s*\\(((?:[^'\")]|$enumLength)++)\\))?\\s*(zerofill\\s*)?" .
-            "(unsigned(?:\\s+zerofill)?)?)(?:\\s*(?:CHARSET|CHARACTER\\s+SET)" .
-            "\\s*['\"]?([^'\"\\s,]+)['\"]?)?(?:\\s*COLLATE\\s*['\"]?[^'\"\\s,]+['\"]?)?"; //! store COLLATE
-        $pattern = "$space*(" . ($type == 'FUNCTION' ? '' : $this->_engine()->inout()) .
-            ")?\\s*(?:`((?:[^`]|``)*)`\\s*|\\b(\\S+)\\s+)$typePattern";
+        $routineTypes = implode("|", [...$types, ...$aliases]);
+        $enumLength = $this->_engine()->enumLengthRegex();
+        $routineName = $this->_statement()->escapeId($name);
+        $isFunction = $type === 'FUNCTION';
+        $paramType = $isFunction ? '' : $this->_engine()->inout();
 
-        $create = $this->_engine()->result("SHOW CREATE $type " . $this->_statement()->escapeId($name), 2);
+        $space = "(?:\\s|/\\*[\s\S]*?\\*/|(?:#|-- )[^\n]*\n?|--\r?\n)";
+        $typePattern = "(($routineTypes)\\b(?:\\s*\\(((?:[^'\")]|$enumLength)++)\\))?\\s*" .
+            "(zerofill\\s*)?(unsigned(?:\\s+zerofill)?)?)(?:\\s*(?:CHARSET|CHARACTER\\s+SET)" .
+            "\\s*['\"]?([^'\"\\s,]+)['\"]?)?(?:\\s*COLLATE\\s*['\"]?[^'\"\\s,]+['\"]?)?"; //! store COLLATE
+        $pattern = "$space*($paramType)?\\s*(?:`((?:[^`]|``)*)`\\s*|\\b(\\S+)\\s+)$typePattern";
+
+        $create = $this->_engine()->result("SHOW CREATE $type $routineName", 2);
         if (!$create) {
             return null;
         }
 
-        preg_match("~\\(((?:$pattern\\s*,?)*)\\)\\s*" . ($type == "FUNCTION" ?
-            "RETURNS\\s+$typePattern\\s+" : '') . "(.*)~is", $create, $match);
+        $returnCode = $isFunction ? "RETURNS\\s+$typePattern\\s+" : '';
+        preg_match("~\\(((?:$pattern\\s*,?)*)\\)\\s*$returnCode(.*)~is", $create, $match);
         $language = 'SQL'; // available in information_schema.ROUTINES.PARAMETER_STYLE;
-        $query = "SELECT ROUTINE_COMMENT FROM information_schema.ROUTINES WHERE " .
-            "ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = " . $this->_engine()->quote($name);
+        $query = "SELECT ROUTINE_COMMENT FROM information_schema.ROUTINES
+WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = " . $this->_engine()->quote($name);
         $comment = $this->_engine()->result($query);
 
         preg_match_all("~$pattern\\s*,?~is", $match[1], $matches, PREG_SET_ORDER);
-        $normalizeEnum = function(array $match): string {
-            $val = $match[0];
-            return "'" . str_replace("'", "''",
-                addcslashes(stripcslashes(str_replace($val[0] . $val[0],
-                $val[0], substr($val, 1, -1))), '\\')) . "'";
-        };
         // All indexes greater than 5 can be missing.
-        $params = array_map(function(array $param) use($enumLength, $normalizeEnum) {
-            $name = str_replace("``", "`", $param[2]) . $param[3];
-            $type = strtolower($param[5]);
-            $length = preg_replace_callback("~$enumLength~s", $normalizeEnum, $param[6] ?? '');
-            $inout = strtoupper($param[1]);
-            $fullType = $param[4];
-            $collation = strtolower($param[9] ?? '');
-            $unsigned = strtolower(preg_replace('~\s+~', ' ',
-                trim(($param[8] ?? '') . ' ' . ($param[7] ?? ''))));
-            $nullable = 1;
-            return new FieldType(name: $name, type: $type, length: $length, inout: $inout, fullType: $fullType,
-                collation: $collation, unsigned: $unsigned, nullable: $nullable);
-        }, $matches);
+        $params = array_map($this->makeRoutineColumn(...), $matches);
 
-        return $type !== 'FUNCTION' ?
+        return !$isFunction ?
             new RoutineInfoDto($match[11], '', $params, null, $comment ?: '') :
             new RoutineInfoDto($match[17], $language, $params,
-                new FieldType(type: $match[12], length: $match[13],
+                new ColumnType(type: $match[12], length: $match[13],
                     unsigned: $match[15], collation: $match[16]), $comment ?: '');
     }
 
@@ -194,11 +216,12 @@ class Database extends AbstractDatabase
      */
     public function routines(): array
     {
-        $rows = $this->_engine()->rows('SELECT SPECIFIC_NAME, ROUTINE_NAME, ROUTINE_TYPE, ' .
-            'DTD_IDENTIFIER FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE()');
-        return array_map(fn($row) =>
-            new RoutineDto($row['ROUTINE_NAME'], $row['SPECIFIC_NAME'],
-                $row['ROUTINE_TYPE'], $row['DTD_IDENTIFIER'] ?: ''), $rows);
+        $query = "SELECT SPECIFIC_NAME, ROUTINE_NAME, ROUTINE_TYPE, DTD_IDENTIFIER
+FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE()";
+        $callback = fn($row) => new RoutineDto($row['ROUTINE_NAME'],
+            $row['SPECIFIC_NAME'], $row['ROUTINE_TYPE'], $row['DTD_IDENTIFIER'] ?: '');
+
+        return array_map($callback, $this->_engine()->rows($query));
     }
 
     /**

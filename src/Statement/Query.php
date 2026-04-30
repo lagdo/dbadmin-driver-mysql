@@ -2,8 +2,8 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Statement;
 
-use Lagdo\DbAdmin\Driver\Sql\Dto\TableFieldDto;
-use Lagdo\DbAdmin\Driver\Sql\Dto\TableSelectDto;
+use Lagdo\DbAdmin\Driver\Sql\Dto\ColumnDto;
+use Lagdo\DbAdmin\Driver\Sql\Dto\SelectInputDto;
 use Lagdo\DbAdmin\Driver\Sql\Specific\Statement\AbstractQuery;
 
 use function count;
@@ -22,31 +22,31 @@ class Query extends AbstractQuery
     /**
      * @inheritDoc
      */
-    public function getTableSelectQuery(TableSelectDto $select): string
+    public function getTableSelectQuery(SelectInputDto $input): string
     {
         $prefix = '';
-        if (($select->page) && ($select->limit) && !empty($select->group) &&
-            count($select->group) < count($select->fields)) {
+        if (($input->page) && ($input->limit) && !empty($input->group) &&
+            count($input->group) < count($input->columns)) {
             $prefix = 'SQL_CALC_FOUND_ROWS ';
         }
-        return $prefix . parent::getTableSelectQuery($select);
+        return $prefix . parent::getTableSelectQuery($input);
     }
 
     /**
      * @inheritDoc
      */
-    public function convertField(TableFieldDto $field): string
+    public function convertValue(ColumnDto $column): string
     {
-        if (preg_match("~binary~", $field->type)) {
-            return "HEX(" . $this->_statement()->escapeId($field->name) . ")";
+        if (preg_match("~binary~", $column->type)) {
+            return "HEX(" . $this->_statement()->escapeId($column->name) . ")";
         }
-        if ($field->type == "bit") {
+        if ($column->type == "bit") {
             // + 0 is required outside MySQLnd
-            return "BIN(" . $this->_statement()->escapeId($field->name) . " + 0)";
+            return "BIN(" . $this->_statement()->escapeId($column->name) . " + 0)";
         }
-        if (preg_match("~geometry|point|linestring|polygon~", $field->type)) {
+        if (preg_match("~geometry|point|linestring|polygon~", $column->type)) {
             return ($this->_engine()->minVersion(8) ? "ST_" : "") .
-                "AsWKT(" . $this->_statement()->escapeId($field->name) . ")";
+                "AsWKT(" . $this->_statement()->escapeId($column->name) . ")";
         }
         return '';
     }
@@ -54,17 +54,17 @@ class Query extends AbstractQuery
     /**
      * @inheritDoc
      */
-    public function unconvertField(TableFieldDto $field, string $value): string
+    public function unconvertValue(ColumnDto $column, string $value): string
     {
-        if (preg_match("~binary~", $field->type)) {
+        if (preg_match("~binary~", $column->type)) {
             $value = "UNHEX($value)";
         }
-        if ($field->type == "bit") {
+        if ($column->type == "bit") {
             $value = "CONV($value, 2, 10) + 0";
         }
-        if (preg_match("~geometry|point|linestring|polygon~", $field->type)) {
+        if (preg_match("~geometry|point|linestring|polygon~", $column->type)) {
             $value = ($this->_engine()->minVersion(8) ? "ST_" : "") .
-                "GeomFromText($value, SRID({$field->name}))";
+                "GeomFromText($value, SRID({$column->name}))";
         }
         return $value;
     }

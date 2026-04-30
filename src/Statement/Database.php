@@ -66,11 +66,11 @@ class Database extends AbstractDatabase
         $autoIncrementIndex = " PRIMARY KEY";
         // don't overwrite primary key by auto increment
         $table = $this->_utils()->input->getTable();
-        $fields = $this->_utils()->input->getFields();
-        $autoIncrementField = $this->_utils()->input->getAutoIncrementField();
-        if ($table != "" && $autoIncrementField) {
+        $columns = $this->_utils()->input->getColumns();
+        $autoIncrementColumn = $this->_utils()->input->getAutoIncrementColumn();
+        if ($table != "" && $autoIncrementColumn) {
             foreach ($this->_engine()->indexes($table) as $index) {
-                if (in_array($fields[$autoIncrementField]["orig"], $index->columns, true)) {
+                if (in_array($columns[$autoIncrementColumn]["orig"], $index->columns, true)) {
                     $autoIncrementIndex = "";
                     break;
                 }

@@ -2,7 +2,7 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Engine;
 
-use Lagdo\DbAdmin\Driver\Sql\Dto\TableFieldDto;
+use Lagdo\DbAdmin\Driver\Sql\Dto\ColumnDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TableDto;
 use Lagdo\DbAdmin\Driver\Sql\Specific\Engine\AbstractQuery;
 
@@ -65,10 +65,10 @@ class Query extends AbstractQuery
     /**
      * @inheritDoc
      */
-    public function convertSearch(string $idf, array $value, TableFieldDto $field): string
+    public function convertSearch(string $idf, array $value, ColumnDto $column): string
     {
-        return (preg_match('~char|text|enum|set~', $field->type) &&
-            !preg_match('~^utf8~', $field->collation) &&
+        return (preg_match('~char|text|enum|set~', $column->type) &&
+            !preg_match('~^utf8~', $column->collation) &&
             preg_match('~[\x80-\xFF]~', $value['val']) ?
             "CONVERT($idf USING " . $this->_engine()->charset() . ')' : $idf
         );

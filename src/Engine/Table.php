@@ -2,11 +2,11 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Engine;
 
+use Lagdo\DbAdmin\Driver\Sql\Dto\ColumnDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\ForeignKeyDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\IndexDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\PartitionDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TableDto;
-use Lagdo\DbAdmin\Driver\Sql\Dto\TableFieldDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TriggerDto;
 use Lagdo\DbAdmin\Driver\Sql\Specific\Engine\AbstractTable;
 
@@ -39,21 +39,21 @@ class Table extends AbstractTable
     /**
      * @param string $tableName
      *
-     * @return TableFieldDto|null
+     * @return ColumnDto|null
      */
-    private function getTablePrimaryKeyField(string $tableName)
+    private function getTablePrimaryKeyColumn(string $tableName): ColumnDto|null
     {
-        $pkField = null;
-        foreach ($this->fields($tableName) as $field) {
-            if ($field->primary) {
-                if ($pkField !== null) {
+        $pkColumn = null;
+        foreach ($this->columns($tableName) as $column) {
+            if ($column->primary) {
+                if ($pkColumn !== null) {
                     // No multi column primary key
                     return null;
                 }
-                $pkField = $field;
+                $pkColumn = $column;
             }
         }
-        return $pkField;
+        return $pkColumn;
     }
 
     /**
@@ -135,8 +135,8 @@ ORDER BY PARTITION_ORDINAL_POSITION DESC LIMIT 1";
             return null;
         }
 
-        [$fields, $strategy, $partitions] = $result;
-        $entity = new PartitionDto($strategy, $fields, $partitions);
+        [$columns, $strategy, $partitions] = $result;
+        $entity = new PartitionDto($strategy, $columns, $partitions);
 
         $query = "SELECT PARTITION_NAME, PARTITION_DESCRIPTION $from
 AND PARTITION_NAME != '' ORDER BY PARTITION_ORDINAL_POSITION";
@@ -185,64 +185,64 @@ AND PARTITION_NAME != '' ORDER BY PARTITION_ORDINAL_POSITION";
     /**
      * @param array $row
      *
-     * @return TableFieldDto
+     * @return ColumnDto
      */
-    private function makeTableFieldDto(array $row): TableFieldDto
+    private function makeColumnDto(array $row): ColumnDto
     {
-        $field = new TableFieldDto();
-        $field->fullType = $row["COLUMN_TYPE"];
+        $column = new ColumnDto();
+        $column->fullType = $row["COLUMN_TYPE"];
 
         $extra = $row["EXTRA"];
         // https://mariadb.com/kb/en/library/show-columns/
         // https://github.com/vrana/adminer/pull/359#pullrequestreview-276677186
         preg_match('~^(VIRTUAL|PERSISTENT|STORED)~', $extra, $generated);
         preg_match('~^([^( ]+)(?:\((.+)\))?( unsigned)?( zerofill)?$~',
-            $field->fullType, $matchType);
+            $column->fullType, $matchType);
 
-        $field->name = $row["COLUMN_NAME"];
-        $field->fullType = $row["COLUMN_TYPE"];
-        $field->type = $matchType[1] ?? '';
-        $field->length = $matchType[2] ?? '';
-        $field->unsigned = ltrim(($matchType[3] ?? '') . ($matchType[4] ?? ''));
-        $field->nullable = $row["IS_NULLABLE"] === "YES";
-        $field->autoIncrement = $extra === "auto_increment";
-        $field->collation = $row["COLLATION_NAME"] ?? '';
-        $field->comment = $row["COLUMN_COMMENT"] ?? null;
-        $field->primary = $row["COLUMN_KEY"] === "PRI";
+        $column->name = $row["COLUMN_NAME"];
+        $column->fullType = $row["COLUMN_TYPE"];
+        $column->type = $matchType[1] ?? '';
+        $column->length = $matchType[2] ?? '';
+        $column->unsigned = ltrim(($matchType[3] ?? '') . ($matchType[4] ?? ''));
+        $column->nullable = $row["IS_NULLABLE"] === "YES";
+        $column->autoIncrement = $extra === "auto_increment";
+        $column->collation = $row["COLLATION_NAME"] ?? '';
+        $column->comment = $row["COLUMN_COMMENT"] ?? null;
+        $column->primary = $row["COLUMN_KEY"] === "PRI";
  
         //! available since MySQL 5.1.23
-        $field->onUpdate = preg_match('~\bon update (\w+)~i', $extra, $match) ? $match[1] : '';
+        $column->onUpdate = preg_match('~\bon update (\w+)~i', $extra, $match) ? $match[1] : '';
         $privileges = explode(",", $row["PRIVILEGES"] ?? '');
-        $field->privileges = array_flip([...$privileges, 'where', 'order']);
+        $column->privileges = array_flip([...$privileges, 'where', 'order']);
 
         $defaultValue = $this->getRowDefaultValue($row, $matchType);
         $generation = $row["GENERATION_EXPRESSION"] ?? '';
-        $field->default = !$generated ? $defaultValue :
+        $column->default = !$generated ? $defaultValue :
             ($this->_engine()->maria() ? $generation : stripslashes($generation));
 
         $generated = $generated[1] ?? '';
-        $field->generated = $generated === "PERSISTENT" ? "STORED" : $generated;
+        $column->generated = $generated === "PERSISTENT" ? "STORED" : $generated;
 
-        return $field;
+        return $column;
     }
 
     /**
      * @inheritDoc
      */
-    public function fields(string $table): array
+    public function columns(string $table): array
     {
-        $fields = [];
+        $columns = [];
         $tableName = $this->_engine()->quote($table);
         $query = "SELECT * FROM information_schema.COLUMNS
 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = $tableName
 ORDER BY ORDINAL_POSITION";
         $rows = $this->_engine()->rows($query);
         foreach ($rows as $row) {
-            $field = $this->makeTableFieldDto($row);
-            $fields[$field->name] = $field;
+            $column = $this->makeColumnDto($row);
+            $columns[$column->name] = $column;
         }
 
-        return $fields;
+        return $columns;
     }
 
     /**
