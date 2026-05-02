@@ -20,6 +20,8 @@
         "lagdo/dbadmin-driver": "0.22.*"
     },
     "require-dev": {
+        "ext-mysqli": "*",
+        "ext-pdo": "*",
         "phpunit/phpunit": "^9.5",
         "behat/behat": "^3.10",
         "dvdoug/behat-code-coverage": "5.0.*",

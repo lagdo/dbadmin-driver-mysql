@@ -122,7 +122,7 @@ class Server extends AbstractServer
      */
     public function user(): string
     {
-        return $this->_engine()->result('SELECT USER()');
+        return $this->_engine()->columnValue('SELECT USER()');
     }
 
     /**
@@ -131,18 +131,22 @@ class Server extends AbstractServer
     public function getUsers(string $database): array
     {
         // From privileges.inc.php
-        $clause = ($database == '' ? 'user' : 'db WHERE ' .
-            $this->connection->quote($database) . ' LIKE Db');
+        $quotedDbName = $this->connection->quote($database);
+        $clause = $database === '' ? 'user' : "db WHERE $quotedDbName LIKE Db";
         $query = "SELECT User, Host FROM mysql.$clause ORDER BY Host, User";
-        $statement = $this->connection->query($query);
-        // $grant = $statement;
-        if (!$statement) {
+        $result = $this->connection->executeQuery($query);
+        // $grant = $result;
+        if (!$result->hasRowset()) {
             // list logged user, information_schema.USER_PRIVILEGES lists just the current user too
-            $statement = $this->connection->query("SELECT SUBSTRING_INDEX(CURRENT_USER, '@', 1) " .
+            $result = $this->connection->executeQuery("SELECT SUBSTRING_INDEX(CURRENT_USER, '@', 1) " .
                 "AS User, SUBSTRING_INDEX(CURRENT_USER, '@', -1) AS Host");
         }
+        if (!$result->hasRowset()) {
+            return [];
+        }
+
         $users = [];
-        while ($user = $statement->fetchAssoc()) {
+        while ($user = $result->fetchAssoc()) {
             $users[] = $user;
         }
         return $users;
@@ -186,11 +190,12 @@ class Server extends AbstractServer
         //! use information_schema for MySQL 5 - column names in column privileges are not escaped
         $query = 'SHOW GRANTS FOR ' . $this->connection->quote($user) .
             '@' . $this->connection->quote($host);
-        if (!($statement = $this->connection->query($query))) {
+        $result = $this->connection->executeQuery($query);
+        if (!$result->hasRowset()) {
             return $entity;
         }
 
-        while ($grant = $statement->fetchRow()) {
+        while ($grant = $result->fetchRow()) {
             $this->addUserGrant($entity, $grant);
         }
         return $entity;

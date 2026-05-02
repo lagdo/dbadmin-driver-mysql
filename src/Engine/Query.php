@@ -84,7 +84,7 @@ class Query extends AbstractQuery
             'type' => 'VIEW',
             'materialized' => false,
             'select' => preg_replace('~^(?:[^`]|`[^`]*`)*\s+AS\s+~isU', '',
-                $this->_engine()->result('SHOW CREATE VIEW ' . $this->_statement()->escapeTableName($name), 1)),
+                $this->_engine()->columnValue('SHOW CREATE VIEW ' . $this->_statement()->escapeTableName($name), 1)),
         ];
     }
 
@@ -93,7 +93,7 @@ class Query extends AbstractQuery
      */
     public function lastAutoIncrementId(): string
     {
-        return $this->_engine()->result('SELECT LAST_INSERT_ID()'); // mysql_insert_id() truncates bigint
+        return $this->_engine()->columnValue('SELECT LAST_INSERT_ID()'); // mysql_insert_id() truncates bigint
     }
 
     /**

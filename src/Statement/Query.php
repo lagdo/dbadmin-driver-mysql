@@ -35,7 +35,7 @@ class Query extends AbstractQuery
     /**
      * @inheritDoc
      */
-    public function convertValue(ColumnDto $column): string
+    public function convertColumn(ColumnDto $column): string
     {
         if (preg_match("~binary~", $column->type)) {
             return "HEX(" . $this->_statement()->escapeId($column->name) . ")";
@@ -54,7 +54,7 @@ class Query extends AbstractQuery
     /**
      * @inheritDoc
      */
-    public function unconvertValue(ColumnDto $column, string $value): string
+    public function unconvertColumn(ColumnDto $column, string $value): string
     {
         if (preg_match("~binary~", $column->type)) {
             $value = "UNHEX($value)";

@@ -4,7 +4,7 @@ namespace Lagdo\DbAdmin\Driver\MySql\Connection\Pdo;
 
 use Lagdo\DbAdmin\Driver\MySql\Connection\Traits\ConnectionTrait;
 use Lagdo\DbAdmin\Driver\Sql\Connection\Pdo\AbstractConnection;
-use Lagdo\DbAdmin\Driver\Sql\Connection\StatementInterface;
+use Lagdo\DbAdmin\Driver\Sql\Connection\QueryResultInterface;
 use PDO;
 
 /**
@@ -48,11 +48,11 @@ class Connection extends AbstractConnection
 
 
         if (($database)) {
-            $this->query("USE " . $this->_statement()->escapeId($database));
+            $this->executeQuery("USE " . $this->_statement()->escapeId($database));
         }
         // Available in MySQLi since PHP 5.0.5
         $this->setCharset($this->_engine()->charset());
-        $this->query("SET sql_quote_show_create = 1, autocommit = 1");
+        $this->executeQuery("SET sql_quote_show_create = 1, autocommit = 1");
         return true;
     }
 
@@ -61,15 +61,15 @@ class Connection extends AbstractConnection
      */
     protected function setCharset(string $charset): void
     {
-        $this->query("SET NAMES $charset"); // charset in DSN is ignored before PHP 5.3.6
+        $this->executeQuery("SET NAMES $charset"); // charset in DSN is ignored before PHP 5.3.6
     }
 
     /**
      * @inheritDoc
      */
-    public function query(string $query, bool $unbuffered = false): StatementInterface|bool
+    public function executeQuery(string $query, bool $unbuffered = false): QueryResultInterface
     {
         $this->client->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, !$unbuffered);
-        return parent::query($query, $unbuffered);
+        return parent::executeQuery($query, $unbuffered);
     }
 }

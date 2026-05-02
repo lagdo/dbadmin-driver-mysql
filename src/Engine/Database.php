@@ -2,7 +2,6 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Engine;
 
-use Lagdo\DbAdmin\Driver\Sql\Connection\StatementInterface;
 use Lagdo\DbAdmin\Driver\Sql\Dto\ColumnType;
 use Lagdo\DbAdmin\Driver\Sql\Dto\RoutineDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\RoutineInfoDto;
@@ -14,9 +13,7 @@ use function array_keys;
 use function array_map;
 use function count;
 use function implode;
-use function intval;
 use function in_array;
-use function is_a;
 use function preg_match;
 use function preg_match_all;
 use function preg_replace;
@@ -61,10 +58,9 @@ class Database extends AbstractDatabase
      */
     public function databaseSize(string $database): int
     {
-        $statement = $this->_engine()->execute("SELECT SUM(data_length + index_length)
+        $result = $this->_engine()->executeQuery("SELECT SUM(data_length + index_length)
 FROM information_schema.tables where table_schema = " . $this->_engine()->quote($database));
-        return is_a($statement, StatementInterface::class) && ($row = $statement->fetchRow()) ?
-            intval($row[0]) : 0;
+        return $result->hasRowset() && ($row = $result->fetchRow()) ? (int)$row[0] : 0;
     }
 
     /**
@@ -73,13 +69,13 @@ FROM information_schema.tables where table_schema = " . $this->_engine()->quote(
     public function databaseCollation(string $database, array $collations): string
     {
         $databaseName = $this->_statement()->escapeId($database);
-        $create = $this->_engine()->result("SHOW CREATE DATABASE $databaseName", 1);
+        $create = $this->_engine()->columnValue("SHOW CREATE DATABASE $databaseName", 1);
 
         return match(true) {
-            preg_match('~ COLLATE ([^ ]+)~', $create, $match) => $match[1],
-            preg_match('~ CHARACTER SET ([^ ]+)~', $create, $match) =>
+            preg_match('~ COLLATE ([^ ]+)~', $create, $match) > 0 => $match[1],
+            preg_match('~ CHARACTER SET ([^ ]+)~', $create, $match) > 0 =>
                 $collations[$match[1]][-1], // default collation
-            default => null,
+            default => '',
         };
     }
 
@@ -188,7 +184,7 @@ FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NA
             "\\s*['\"]?([^'\"\\s,]+)['\"]?)?(?:\\s*COLLATE\\s*['\"]?[^'\"\\s,]+['\"]?)?"; //! store COLLATE
         $pattern = "$space*($paramType)?\\s*(?:`((?:[^`]|``)*)`\\s*|\\b(\\S+)\\s+)$typePattern";
 
-        $create = $this->_engine()->result("SHOW CREATE $type $routineName", 2);
+        $create = $this->_engine()->columnValue("SHOW CREATE $type $routineName", 2);
         if (!$create) {
             return null;
         }
@@ -198,7 +194,7 @@ FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NA
         $language = 'SQL'; // available in information_schema.ROUTINES.PARAMETER_STYLE;
         $query = "SELECT ROUTINE_COMMENT FROM information_schema.ROUTINES
 WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_NAME = " . $this->_engine()->quote($name);
-        $comment = $this->_engine()->result($query);
+        $comment = $this->_engine()->columnValue($query);
 
         preg_match_all("~$pattern\\s*,?~is", $match[1], $matches, PREG_SET_ORDER);
         // All indexes greater than 5 can be missing.

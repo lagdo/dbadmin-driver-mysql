@@ -89,7 +89,7 @@ class Table extends AbstractTable
         static $pattern = '(?:`(?:[^`]|``)+`|"(?:[^"]|"")+")';
         $foreignKeys = [];
         $onActions = $this->_engine()->actions();
-        $createTable = $this->_engine()->result("SHOW CREATE TABLE " .
+        $createTable = $this->_engine()->columnValue("SHOW CREATE TABLE " .
             $this->_statement()->escapeTableName($table), 1);
         if ($createTable) {
             preg_match_all("~CONSTRAINT ($pattern) FOREIGN KEY ?\\(((?:$pattern,? ?)+)\\) REFERENCES " .
@@ -130,12 +130,12 @@ AND CHECK_CLAUSE NOT LIKE '% IS NOT NULL'";
         $from = "FROM information_schema.PARTITIONS WHERE TABLE_SCHEMA = $database AND TABLE_NAME = $tableName";
         $query = "SELECT PARTITION_METHOD, PARTITION_EXPRESSION, PARTITION_ORDINAL_POSITION $from
 ORDER BY PARTITION_ORDINAL_POSITION DESC LIMIT 1";
-        $result = $this->_engine()->execute($query)?->fetchRow();
-        if (!$result) {
+        $result = $this->_engine()->executeQuery($query);
+        if ($result->hasError() || $result->rowCount() === 0) {
             return null;
         }
 
-        [$columns, $strategy, $partitions] = $result;
+        [$columns, $strategy, $partitions] = $result->fetchRow();
         $entity = new PartitionDto($strategy, $columns, $partitions);
 
         $query = "SELECT PARTITION_NAME, PARTITION_DESCRIPTION $from

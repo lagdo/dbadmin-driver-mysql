@@ -96,7 +96,7 @@ class Table extends AbstractTable
      */
     public function getExportTableQueries(string $table, bool $autoIncrement, string $style): string
     {
-        $query = $this->_engine()->result("SHOW CREATE TABLE " .
+        $query = $this->_engine()->columnValue("SHOW CREATE TABLE " .
             $this->_statement()->escapeTableName($table), 1);
         if (!$autoIncrement) {
             $query = preg_replace('~ AUTO_INCREMENT=\d+~', '', $query); //! skip comments

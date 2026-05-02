@@ -22,7 +22,7 @@ class Database extends AbstractDatabase
         if (!preg_match('~CREATE~', $style)) {
             return '';
         }
-        $create = $this->_engine()->result("SHOW CREATE DATABASE $database", 1);
+        $create = $this->_engine()->columnValue("SHOW CREATE DATABASE $database", 1);
         if (!$create) {
             return '';
         }

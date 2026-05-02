@@ -5,7 +5,9 @@ namespace Lagdo\DbAdmin\Driver\MySql\Connection\MySqli;
 use Lagdo\DbAdmin\Driver\MySql\Connection\Traits\ConnectionTrait;
 use Lagdo\DbAdmin\Driver\Sql\Connection\AbstractConnection;
 use Lagdo\DbAdmin\Driver\Sql\Connection\PreparedStatement;
-use Lagdo\DbAdmin\Driver\Sql\Connection\StatementInterface;
+use Lagdo\DbAdmin\Driver\Sql\Connection\QueryResultInterface;
+use mysqli;
+use mysqli_stmt;
 
 use function ini_get;
 use function intval;
@@ -19,6 +21,13 @@ use function mysqli_report;
 class Connection extends AbstractConnection
 {
     use ConnectionTrait;
+
+    /**
+     * The client object used to query the database driver
+     *
+     * @var mysqli|bool
+     */
+    protected mysqli|bool $client;
 
     /**
     * @inheritDoc
@@ -46,11 +55,11 @@ class Connection extends AbstractConnection
 
         $server = $port === '' ? $host : "$host:$port";
         if (!@$this->client->real_connect(
-            ($server != "" ? $host : ini_get("mysqli.default_host")),
-            ($server . $username != "" ? $username : ini_get("mysqli.default_user")),
-            ($server . $username . $password != "" ? $password : ini_get("mysqli.default_pw")),
+            ($server !== '' ? $host : ini_get('mysqli.default_host')),
+            ($server . $username !== '' ? $username : ini_get('mysqli.default_user')),
+            ($server . $username . $password !== '' ? $password : ini_get('mysqli.default_pw')),
             $database,
-            (is_numeric($port) ? intval($port) : intval(ini_get("mysqli.default_port"))),
+            (is_numeric($port) ? intval($port) : intval(ini_get('mysqli.default_port'))),
             (!is_numeric($port) ? $port : $socket),
             ($ssl ? MYSQLI_CLIENT_SSL_DONT_VERIFY_SERVER_CERT : 0) // (not available before PHP 5.6.16)
         )) {
@@ -63,7 +72,7 @@ class Connection extends AbstractConnection
         }
         // Available in MySQLi since PHP 5.0.5
         $this->setCharset($this->_engine()->charset());
-        $this->query("SET sql_quote_show_create = 1, autocommit = 1");
+        $this->executeQuery('SET sql_quote_show_create = 1, autocommit = 1');
         return true;
     }
 
@@ -83,6 +92,7 @@ class Connection extends AbstractConnection
         if ($this->client->set_charset($charset)) {
             return;
         }
+
         // the client library may not support utf8mb4
         $this->client->set_charset('utf8');
         $this->client->query("SET NAMES $charset");
@@ -91,10 +101,10 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    public function query(string $query, bool $unbuffered = false): StatementInterface|bool
+    public function executeQuery(string $query, bool $unbuffered = false): QueryResultInterface
     {
         $result = $this->client->query($query, $unbuffered);
-        return !$result ? false : new Statement($result);
+        return new QueryResult($result);
     }
 
     /**
@@ -108,64 +118,67 @@ class Connection extends AbstractConnection
     /**
      * @inheritDoc
      */
-    public function multiQuery(string $query): bool
+    public function prepareStatement(string $query): PreparedStatement
     {
-        return $this->client->multi_query($query);
+        // MySQLi uses the '?' char as placeholder for query params.
+        [$params, $query] = $this->getPreparedParams($query, fn() => '?');
+        $statement = $this->client->prepare($query);
+        return new PreparedStatement($statement, $query, $params);
     }
 
     /**
      * @inheritDoc
      */
-    public function storedResult(): StatementInterface|bool
+    public function executeStatement(PreparedStatement $preparedStatement,
+        array $values): QueryResultInterface
+    {
+        /** @var mysqli_stmt|bool */
+        $statement = $preparedStatement->statement();
+        if (!$statement) {
+            $this->setError($this->_utils()->lang($this->statementNotPrepared));
+            return new QueryResult(false);
+        }
+
+        $values = $preparedStatement->paramValues($values, false);
+        if (!$statement->execute($values)) {
+            $this->setError($this->client->error);
+            return new QueryResult(false);
+        }
+
+        return new QueryResult($statement->get_result());
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function executeMultiQuery(string $query): QueryResultInterface
+    {
+        return new QueryResult($this->client->multi_query($query));
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function readRowset(QueryResultInterface $_): QueryResultInterface
     {
         $result = $this->client->store_result();
         if (!$result) { // The resultset is empty
             // Error or no result
             $this->setError($this->client->error);
             $this->setAffectedRows($this->client->affected_rows);
-            return $this->client->error === '';
         }
-        return new Statement($result);
+
+        return new QueryResult($result);
     }
 
     /**
      * @inheritDoc
      */
-    public function nextResult(): mixed
+    public function nextRowset(QueryResultInterface $_): bool
     {
         $this->setError();
         $this->setAffectedRows(0);
+
         return $this->client->next_result();
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function prepareStatement(string $query): PreparedStatement
-    {
-        // MySQLi uses the '?' char as placeholder for query params.
-        [$params, $query] = $this->getPreparedParams($query, fn() => '?');
-        $statement = $this->client->prepare($query);
-        return new PreparedStatement($query, $statement, $params);
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function executeStatement(PreparedStatement $statement,
-        array $values): ?StatementInterface
-    {
-        if (!$statement->prepared()) {
-            return null;
-        }
-
-        $values = $statement->paramValues($values, false);
-        $result = $statement->statement()->execute($values);
-        if (!$result) {
-            $this->setError($this->client->error);
-            return null;
-        }
-
-        return new Statement($statement->statement()->get_result());
     }
 }
