@@ -10,6 +10,7 @@ use Lagdo\DbAdmin\Driver\Sql\Specific\Statement\AbstractTable;
 
 use function addcslashes;
 use function array_map;
+use function count;
 use function implode;
 use function preg_match;
 use function preg_replace;
@@ -23,13 +24,13 @@ class Table extends AbstractTable
      */
     private function getTableColumnClause(ColumnInputDto $input): string
     {
-        if (preg_match('~ GENERATED~', $input->column->default ?? '')) {
+        if (preg_match('~ GENERATED~', $input->default ?? '')) {
             // swap default and null
             // MariaDB doesn't support NULL on virtual inputs
-            $input->column->default = $this->_engine()->maria() ? '' : $input->column->nullable;
-            $input->column->nullable = $input->column->hasDefault();
+            $input->default = $this->_engine()->maria() ? '' : $input->nullable;
+            $input->nullable = $input->hasDefault();
         }
-        return $input->clauses();
+        return $this->getAddColumnClause($input);
     }
 
     /**
@@ -37,18 +38,25 @@ class Table extends AbstractTable
      */
     public function getCreateTableQueries(TableCreateDto $table): array
     {
-        $clauses = array_map($this->getTableColumnClause(...), $table->inputs['added']);
+        if ($table->name === '') {
+            return [];
+        }
+
+        $clauses = array_map($this->getTableColumnClause(...), $table->columns['added']);
         $clauses = [
             ...$clauses,
             ...$this->getForeignKeyClauses($table, 'ADD '),
         ];
+        if (count($clauses) === 0) {
+            return [];
+        }
 
-        $status = $table->options($this->_engine()->quote(...));
         // Todo: append partitioning clauses to $status
-
         $tableName = $this->_statement()->escapeTableName($table->name);
-        $clauses = implode(', ', $clauses);
-        return ["CREATE TABLE $tableName ($clauses) $status"];
+        $clauses = implode(",\n  ", $clauses);
+        $status = $table->options($this->_engine()->quote(...));
+
+        return ["CREATE TABLE $tableName (\n  $clauses\n) $status"];
     }
 
     /**
@@ -56,39 +64,47 @@ class Table extends AbstractTable
      */
     public function getAlterTableQueries(TableAlterDto $table): array
     {
-        $clauses = [];
-        foreach ($table->inputs['added'] as $input) {
-            $columnClause = $this->getTableColumnClause($input);
-            $clauses[] = "ADD $columnClause{$input->after}";
+        if ($table->name === '') {
+            return [];
         }
-        foreach ($table->inputs['edited'] as $input) {
-            $columnName = $this->_statement()->escapeId($input->column->name);
-            // The column rename is done here.
-            $columnClause = $this->getTableColumnClause($input);
-            $clauses[] = "CHANGE $columnName $columnClause{$input->after}";
-        }
-        foreach ($table->droppedColumns as $columnName) {
-            $clauses[] = 'DROP ' . $this->_statement()->escapeId($columnName);
-        }
-        $clauses = [
-            ...$clauses,
-            ...$this->getForeignKeyClauses($table, 'ADD '),
-        ];
 
+        $addColumnsClauses = array_map(function(ColumnInputDto $input) {
+            $columnClause = $this->getTableColumnClause($input);
+            return "ADD $columnClause{$input->after}";
+        }, $table->columns['added']);
+        $editColumnsClauses = array_map(function(ColumnInputDto $input) {
+            $currColumnName = $this->_statement()->escapeId($input->column->name);
+            // The column rename is done here, if the new name is different.
+            $columnClause = $this->getTableColumnClause($input);
+            return "CHANGE $currColumnName $columnClause{$input->after}";
+        }, $table->columns['edited']);
+        $dropColumnsClauses = array_map(fn(string $columnName) =>
+            'DROP ' . $this->_statement()->escapeId($columnName), $table->columns['dropped']);
+
+        $tableClauses = [];
         if ($table->name !== $table->current->name) {
-            $clauses[] = 'RENAME TO ' . $this->_statement()->escapeTableName($table->name);
+            $tableClauses[] = 'RENAME TO ' . $this->_statement()->escapeTableName($table->name);
         }
-
         $status = $table->options($this->_engine()->quote(...));
         // Todo: append partitioning clauses to $status
         if ($status !== '') {
-            $clauses[] = $status;
+            $tableClauses[] = $status;
         }
 
-        $tableName = $this->_statement()->escapeTableName($table->name);
-        $clauses = implode(', ', $clauses);
+        $clauses = [
+            ...$addColumnsClauses,
+            ...$editColumnsClauses,
+            ...$dropColumnsClauses,
+            ...$this->getForeignKeyClauses($table, 'ADD '),
+            ...$tableClauses,
+        ];
+        if (count($clauses) === 0) {
+            return [];
+        }
 
-        return ["ALTER TABLE $tableName $clauses"];
+        $tableName = $this->_statement()->escapeTableName($table->current->name);
+
+        return ["ALTER TABLE $tableName\n  " . implode(",\n  ", $clauses)];
     }
 
     /**
@@ -147,6 +163,10 @@ CREATE TRIGGER $trigger {$row['Timing']} {$row['Event']} ON $triggerTable FOR EA
             return "ADD $indexType ($columns)";
         }, $alter);
         $clauses = [...$dropClauses, ...$alterClauses];
+
+        if (count($clauses) === 0) {
+            return [];
+        }
 
         $tableName = $this->_statement()->escapeTableName($table);
         return ["ALTER TABLE $tableName " . implode(', ', $clauses)];
