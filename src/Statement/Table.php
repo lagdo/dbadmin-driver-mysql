@@ -2,6 +2,7 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Statement;
 
+use Lagdo\DbAdmin\Driver\Sql\Dto\ColumnAction;
 use Lagdo\DbAdmin\Driver\Sql\Dto\ColumnInputDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\IndexDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TableAlterDto;
@@ -42,7 +43,8 @@ class Table extends AbstractTable
             return [];
         }
 
-        $clauses = array_map($this->getAddColumnClause(...), $table->columns['added']);
+        $clauses = array_map($this->getAddColumnClause(...),
+            $table->columns[ColumnAction::ADD->value]);
         $clauses = [
             ...$clauses,
             ...$this->getForeignKeyClauses($table, 'ADD '),
@@ -71,15 +73,16 @@ class Table extends AbstractTable
         $addColumnsClauses = array_map(function(ColumnInputDto $input) {
             $columnClause = $this->getAddColumnClause($input);
             return "ADD $columnClause{$input->after}";
-        }, $table->columns['added']);
+        }, $table->columns[ColumnAction::ADD->value]);
         $editColumnsClauses = array_map(function(ColumnInputDto $input) {
             $currColumnName = $this->_statement()->escapeId($input->column->name);
             // The column rename is done here, if the new name is different.
             $columnClause = $this->getAddColumnClause($input);
             return "CHANGE $currColumnName $columnClause{$input->after}";
-        }, $table->columns['edited']);
+        }, $table->columns[ColumnAction::EDIT->value]);
         $dropColumnsClauses = array_map(fn(string $columnName) =>
-            'DROP ' . $this->_statement()->escapeId($columnName), $table->columns['dropped']);
+            'DROP ' . $this->_statement()->escapeId($columnName),
+                $table->columns[ColumnAction::DROP->value]);
 
         $tableClauses = [];
         if ($table->name !== $table->current->name) {
