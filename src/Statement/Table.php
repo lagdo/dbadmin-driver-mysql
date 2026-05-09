@@ -22,7 +22,7 @@ class Table extends AbstractTable
      *
      * @return string
      */
-    private function getTableColumnClause(ColumnInputDto $input): string
+    protected function getAddColumnClause(ColumnInputDto $input): string
     {
         if (preg_match('~ GENERATED~', $input->default ?? '')) {
             // swap default and null
@@ -30,7 +30,7 @@ class Table extends AbstractTable
             $input->default = $this->_engine()->maria() ? '' : $input->nullable;
             $input->nullable = $input->hasDefault();
         }
-        return $this->getAddColumnClause($input);
+        return parent::getAddColumnClause($input);
     }
 
     /**
@@ -42,7 +42,7 @@ class Table extends AbstractTable
             return [];
         }
 
-        $clauses = array_map($this->getTableColumnClause(...), $table->columns['added']);
+        $clauses = array_map($this->getAddColumnClause(...), $table->columns['added']);
         $clauses = [
             ...$clauses,
             ...$this->getForeignKeyClauses($table, 'ADD '),
@@ -69,13 +69,13 @@ class Table extends AbstractTable
         }
 
         $addColumnsClauses = array_map(function(ColumnInputDto $input) {
-            $columnClause = $this->getTableColumnClause($input);
+            $columnClause = $this->getAddColumnClause($input);
             return "ADD $columnClause{$input->after}";
         }, $table->columns['added']);
         $editColumnsClauses = array_map(function(ColumnInputDto $input) {
             $currColumnName = $this->_statement()->escapeId($input->column->name);
             // The column rename is done here, if the new name is different.
-            $columnClause = $this->getTableColumnClause($input);
+            $columnClause = $this->getAddColumnClause($input);
             return "CHANGE $currColumnName $columnClause{$input->after}";
         }, $table->columns['edited']);
         $dropColumnsClauses = array_map(fn(string $columnName) =>

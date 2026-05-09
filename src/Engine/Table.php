@@ -11,9 +11,11 @@ use Lagdo\DbAdmin\Driver\Sql\Dto\TriggerDto;
 use Lagdo\DbAdmin\Driver\Sql\Specific\Engine\AbstractTable;
 
 use function addcslashes;
+use function array_combine;
 use function array_flip;
 use function array_pad;
 use function array_map;
+use function array_values;
 use function explode;
 use function ltrim;
 use function pack;
@@ -31,37 +33,17 @@ class Table extends AbstractTable
      */
     public function supportForeignKeys(TableDto $tableStatus): bool
     {
-        return preg_match('~InnoDB|IBMDB2I~i', $tableStatus->engine ?? '')
-            || (preg_match('~NDB~i', $tableStatus->engine ?? '')
-            && $this->_engine()->minVersion(5.6));
-    }
-
-    /**
-     * @param string $tableName
-     *
-     * @return ColumnDto|null
-     */
-    private function getTablePrimaryKeyColumn(string $tableName): ColumnDto|null
-    {
-        $pkColumn = null;
-        foreach ($this->columns($tableName) as $column) {
-            if ($column->primary) {
-                if ($pkColumn !== null) {
-                    // No multi column primary key
-                    return null;
-                }
-                $pkColumn = $column;
-            }
-        }
-        return $pkColumn;
+        return preg_match('~InnoDB|IBMDB2I~i', $tableStatus->engine ?? '') ||
+            (preg_match('~NDB~i', $tableStatus->engine ?? '') &&
+            $this->_engine()->minVersion(5.6));
     }
 
     /**
      * @param array $match
      *
-     * @return ForeignKeyDto
+     * @return array
      */
-    private function makeTableForeignKey(array $match): ForeignKeyDto
+    private function makeTableForeignKey(array $match): array
     {
         $match = array_pad($match, 8, '');
 
@@ -70,15 +52,16 @@ class Table extends AbstractTable
         preg_match_all("~$pattern~", $match[5], $target);
 
         $foreignKey = new ForeignKeyDto();
+        $unescapeId = $this->_statement()->unescapeId(...);
 
-        $foreignKey->database = $this->_statement()->unescapeId($match[4] != '' ? $match[3] : $match[4]);
-        $foreignKey->table = $this->_statement()->unescapeId($match[4] != '' ? $match[4] : $match[3]);
-        $foreignKey->source = array_map($this->_statement()->unescapeId(...), $source[0]);
-        $foreignKey->target = array_map($this->_statement()->unescapeId(...), $target[0]);
+        $foreignKey->database = $unescapeId($match[4] != '' ? $match[3] : $match[4]);
+        $foreignKey->table = $unescapeId($match[4] != '' ? $match[4] : $match[3]);
+        $foreignKey->source = array_map($unescapeId, $source[0]);
+        $foreignKey->target = array_map($unescapeId, $target[0]);
         $foreignKey->onDelete = $match[6] ?: "RESTRICT";
         $foreignKey->onUpdate = $match[7] ?: "RESTRICT";
 
-        return $foreignKey;
+        return [$unescapeId($match[1]), $foreignKey];
     }
 
     /**
@@ -97,9 +80,11 @@ class Table extends AbstractTable
                 "?(?: ON UPDATE ($onActions))?~", $createTable, $matches, PREG_SET_ORDER);
 
             foreach ($matches as $match) {
-                $foreignKeys[$this->_statement()->unescapeId($match[1])] = $this->makeTableForeignKey($match);
+                [$name, $foreignKey] = $this->makeTableForeignKey($match);
+                $foreignKeys[$name] = $foreignKey;
             }
         }
+
         return $foreignKeys;
     }
 
@@ -234,8 +219,7 @@ AND PARTITION_NAME != '' ORDER BY PARTITION_ORDINAL_POSITION";
         $columns = [];
         $tableName = $this->_engine()->quote($table);
         $query = "SELECT * FROM information_schema.COLUMNS
-WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = $tableName
-ORDER BY ORDINAL_POSITION";
+WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
         $rows = $this->_engine()->rows($query);
         foreach ($rows as $row) {
             $column = $this->makeColumnDto($row);
@@ -255,10 +239,13 @@ ORDER BY ORDINAL_POSITION";
     {
         $tableName = $this->_engine()->quote($table);
         $tableNameLike = $this->_engine()->quote(addcslashes($table, "%_\\"));
-        $query = $fast ? "SELECT TABLE_NAME AS Name, ENGINE AS Engine, TABLE_COMMENT " .
-            "AS Comment FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()" .
-            ($table !== '' ? " AND TABLE_NAME = $tableName" : " ORDER BY Name") :
+
+        $querySuffix = $table !== '' ? "AND TABLE_NAME = $tableName" : "ORDER BY Name";
+        $query = $fast ? "SELECT TABLE_NAME AS Name, ENGINE AS Engine,
+TABLE_COMMENT AS Comment FROM information_schema.TABLES
+WHERE TABLE_SCHEMA = DATABASE() $querySuffix" :
             "SHOW TABLE STATUS" . ($table !== '' ? " LIKE $tableNameLike" : '');
+
         return $this->_engine()->rows($query);
     }
 
@@ -400,11 +387,11 @@ ORDER BY ORDINAL_POSITION";
         if ($name == '') {
             return null;
         }
-        $rows = $this->_engine()->rows("SHOW TRIGGERS WHERE `Trigger` = " . $this->_engine()->quote($name));
-        if (!($row = reset($rows))) {
-            return null;
-        }
-        return new TriggerDto($row["Timing"], $row["Event"], '', '', $row["Trigger"]);
+
+        $triggerName = $this->_engine()->quote($name);
+        $rows = $this->_engine()->rows("SHOW TRIGGERS WHERE `Trigger` = $triggerName");
+        return !($row = reset($rows)) ? null :
+            new TriggerDto($row["Timing"], $row["Event"], '', '', $row["Trigger"]);
     }
 
     /**
@@ -412,11 +399,13 @@ ORDER BY ORDINAL_POSITION";
      */
     public function triggers(string $table): array
     {
-        $triggers = [];
-        foreach ($this->_engine()->rows("SHOW TRIGGERS LIKE " . $this->_engine()->quote(addcslashes($table, "%_\\"))) as $row) {
-            $triggers[$row["Trigger"]] = new TriggerDto($row["Timing"], $row["Event"], '', '', $row["Trigger"]);
-        }
-        return $triggers;
+        $tableName = $this->_engine()->quote(addcslashes($table, "%_\\"));
+        $rows = $this->_engine()->rows("SHOW TRIGGERS LIKE $tableName");
+        $keys = array_map(fn(array $row) => $row["Trigger"], $rows);
+        $values = array_map(fn(array $row) => new TriggerDto($row["Timing"],
+            $row["Event"], '', '', $row["Trigger"]), $rows);
+
+        return array_combine($keys, $values);
     }
 
     /**
@@ -437,13 +426,14 @@ ORDER BY ORDINAL_POSITION";
     public function tableHelp(string $name): string
     {
         $isMaria = $this->_engine()->flavor() === 'maria';
-        if ($this->_engine()->isInformationSchema($this->_engine()->database())) {
-            return strtolower(($isMaria ? "information-schema-$name-table/" :
-                    str_replace("_", "-", $name) . "-table.html"));
-        }
-        if ($this->_engine()->database() == "mysql") {
-            return $isMaria ? "mysql$name-table/" : "system-database.html"; //! more precise link
-        }
-        return '';
+        $database = $this->_engine()->database();
+        return match(true) {
+            $this->_engine()->isInformationSchema($database) =>
+                strtolower(($isMaria ? "information-schema-{$name}-table/" :
+                    str_replace("_", "-", $name) . "-table.html")),
+            $database === "mysql" => $isMaria ?
+                "mysql{$name}-table/" : "system-database.html", //! more precise link
+            default => '',
+        };
     }
 }
