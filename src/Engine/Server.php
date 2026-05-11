@@ -54,9 +54,13 @@ class Server extends AbstractServer
             "char|text" => ["concat"],
         ];
         // Features always available
-        $this->config->features = ['comment', 'columns', 'copy', 'database', 'drop_col',
-            'dump', 'indexes', 'kill', 'privileges', 'move_col', 'procedure', 'processlist',
-            'routine', 'sql', 'status', 'table', 'trigger', 'variables', 'view'];
+        $this->config->features = [
+            'comment', 'columns', 'copy', 'database', 'drop_col', 'dump',
+            'indexes', 'kill', 'privileges', 'move_col', 'procedure', 'processlist',
+            'routine', 'sql', 'status', 'table', 'trigger', 'variables', 'view',
+            // Custom additions
+            'table_collation',
+        ];
 
         // Regex to parse SQL statements in a text
         $this->config->sqlStatementRegex = '\\s*|[\'"`#]|/\*|-- |$';

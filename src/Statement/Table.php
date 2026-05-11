@@ -2,7 +2,6 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Statement;
 
-use Lagdo\DbAdmin\Driver\Sql\Dto\ColumnAction;
 use Lagdo\DbAdmin\Driver\Sql\Dto\ColumnInputDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\IndexDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TableAlterDto;
@@ -31,7 +30,7 @@ class Table extends AbstractTable
             $input->default = $this->_engine()->maria() ? '' : $input->nullable;
             $input->nullable = $input->hasDefault();
         }
-        return parent::getAddColumnClause($input);
+        return parent::getAddColumnClause($input) . $input->after;
     }
 
     /**
@@ -43,8 +42,7 @@ class Table extends AbstractTable
             return [];
         }
 
-        $clauses = array_map($this->getAddColumnClause(...),
-            $table->columns[ColumnAction::ADD->value]);
+        $clauses = array_map($this->getAddColumnClause(...), $table->addedColumns());
         $clauses = [
             ...$clauses,
             ...$this->getForeignKeyClauses($table, 'ADD '),
@@ -62,6 +60,66 @@ class Table extends AbstractTable
     }
 
     /**
+     * @return string
+     */
+    private function getEditColumnClause(ColumnInputDto $input): string
+    {
+        $currName = $this->_statement()->escapeId($input->column->name);
+
+        // The column rename is done here, if the new name is different.
+        return "CHANGE $currName " . $this->getAddColumnClause($input);
+    }
+
+    /**
+     * @param TableAlterDto $table
+     *
+     * @return string
+     */
+    public function getRenameTableClause(TableAlterDto $table): string
+    {
+        return 'RENAME TO ' . $this->_statement()->escapeTableName($table->name);
+    }
+
+    /**
+     * @param ColumnInputDto $input
+     *
+     * @return bool
+     */
+    public function columnChanged(ColumnInputDto $input): bool
+    {
+        return $input->nameChanged() || $input->nullableChanged() ||
+            $input->valueChanged() || $input->typeChanged() ||
+            $input->onUpdateChanged() || $input->commentChanged()
+            /* || $input->after !== ''*/;
+    }
+
+    private function getTableClauses(TableAlterDto $table): array
+    {
+        $tableClauses = $table->nameChanged() ? [$this->getRenameTableClause($table)] : [];
+
+        $tableOptions = [];
+        if ($table->commentChanged()) {
+            $tableOptions[] = 'COMMENT=' . $this->_engine()->quote($table->comment);
+        }
+        if ($table->engineChanged()) {
+            $tableOptions[] = 'ENGINE=' . $this->_engine()->quote($table->engine);
+        }
+        if ($table->collationChanged()) {
+            $tableOptions[] = 'COLLATE ' . $this->_engine()->quote($table->collation);
+        }
+        if ($table->hasAutoIncrement()) {
+            $tableOptions[] = "AUTO_INCREMENT={$table->autoIncrement}";
+        }
+        if (count($tableOptions) > 0) {
+            $tableClauses[] = implode(' ', $tableOptions);
+        }
+
+        // Todo: append partitioning clauses to $status
+
+        return $tableClauses;
+    }
+
+    /**
      * @inheritDoc
      */
     public function getAlterTableQueries(TableAlterDto $table): array
@@ -70,36 +128,18 @@ class Table extends AbstractTable
             return [];
         }
 
-        $addColumnsClauses = array_map(function(ColumnInputDto $input) {
-            $columnClause = $this->getAddColumnClause($input);
-            return "ADD $columnClause{$input->after}";
-        }, $table->columns[ColumnAction::ADD->value]);
-        $editColumnsClauses = array_map(function(ColumnInputDto $input) {
-            $currColumnName = $this->_statement()->escapeId($input->column->name);
-            // The column rename is done here, if the new name is different.
-            $columnClause = $this->getAddColumnClause($input);
-            return "CHANGE $currColumnName $columnClause{$input->after}";
-        }, $table->columns[ColumnAction::EDIT->value]);
-        $dropColumnsClauses = array_map(fn(string $columnName) =>
-            'DROP ' . $this->_statement()->escapeId($columnName),
-                $table->columns[ColumnAction::DROP->value]);
+        $addColumnsClauses = array_map(fn(ColumnInputDto $input) =>
+            "ADD " . $this->getAddColumnClause($input), $table->addedColumns());
 
-        $tableClauses = [];
-        if ($table->name !== $table->current->name) {
-            $tableClauses[] = 'RENAME TO ' . $this->_statement()->escapeTableName($table->name);
-        }
-        $status = $table->options($this->_engine()->quote(...));
-        // Todo: append partitioning clauses to $status
-        if ($status !== '') {
-            $tableClauses[] = $status;
-        }
+        $changedColumns = array_filter($table->editedColumns(), $this->columnChanged(...));
+        $editColumnsClauses = array_map($this->getEditColumnClause(...), $changedColumns);
 
         $clauses = [
             ...$addColumnsClauses,
             ...$editColumnsClauses,
-            ...$dropColumnsClauses,
+            ...$this->getDropColumnClauses($table),
             ...$this->getForeignKeyClauses($table, 'ADD '),
-            ...$tableClauses,
+            ...$this->getTableClauses($table),
         ];
         if (count($clauses) === 0) {
             return [];
@@ -115,8 +155,8 @@ class Table extends AbstractTable
      */
     public function getExportTableQueries(string $table, bool $autoIncrement, string $style): string
     {
-        $query = $this->_engine()->columnValue("SHOW CREATE TABLE " .
-            $this->_statement()->escapeTableName($table), 1);
+        $tableName = $this->_statement()->escapeTableName($table);
+        $query = $this->_engine()->columnValue("SHOW CREATE TABLE $tableName", 1);
         if (!$autoIncrement) {
             $query = preg_replace('~ AUTO_INCREMENT=\d+~', '', $query); //! skip comments
         }
