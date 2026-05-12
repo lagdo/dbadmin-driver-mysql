@@ -13,10 +13,11 @@ use Lagdo\DbAdmin\Driver\Sql\Specific\Engine\AbstractTable;
 use function addcslashes;
 use function array_combine;
 use function array_flip;
-use function array_pad;
 use function array_map;
+use function array_pad;
 use function array_values;
 use function explode;
+use function is_a;
 use function ltrim;
 use function pack;
 use function preg_match;
@@ -169,10 +170,11 @@ AND PARTITION_NAME != '' ORDER BY PARTITION_ORDINAL_POSITION";
 
     /**
      * @param array $row
+     * @param string|TableDto $table
      *
      * @return ColumnDto
      */
-    private function makeColumnDto(array $row): ColumnDto
+    private function makeColumnDto(array $row, string|TableDto $table): ColumnDto
     {
         $column = new ColumnDto();
         $column->fullType = $row["COLUMN_TYPE"];
@@ -208,25 +210,27 @@ AND PARTITION_NAME != '' ORDER BY PARTITION_ORDINAL_POSITION";
         $generated = $generated[1] ?? '';
         $column->generated = $generated === "PERSISTENT" ? "STORED" : $generated;
 
+        if ($column->autoIncrement && is_a($table, TableDto::class)) {
+            $table->autoIncrementColumn = $column->name;
+        }
+
         return $column;
     }
 
     /**
      * @inheritDoc
      */
-    public function columns(string $table): array
+    public function columns(string|TableDto $table): array
     {
         $columns = [];
-        $tableName = $this->_engine()->quote($table);
+        $tableName = is_a($table, TableDto::class) ? $table->name : $table;
+        $tableName = $this->_engine()->quote($tableName);
         $query = "SELECT * FROM information_schema.COLUMNS
 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = $tableName ORDER BY ORDINAL_POSITION";
         $rows = $this->_engine()->rows($query);
-        foreach ($rows as $row) {
-            $column = $this->makeColumnDto($row);
-            $columns[$column->name] = $column;
-        }
-
-        return $columns;
+        $columns = array_map(fn(array $row) => $this->makeColumnDto($row, $table), $rows);
+        // Key by column name.
+        return array_combine(array_map(fn($column) => $column->name, $columns), $columns);
     }
 
     /**
@@ -261,7 +265,7 @@ WHERE TABLE_SCHEMA = DATABASE() $querySuffix" :
         $status->engine = $row['Engine'] ?? '';
         $status->collation = $row['Collation'] ?? '';
         $status->hasAutoIncrement = isset($row['Auto_increment']);
-        $status->autoIncrement = $row['Auto_increment'] ?? 0;
+        $status->autoIncrementValue = $row['Auto_increment'] ?? 0;
         $status->dataLength = $row['Data_length'] ?? null;
         $status->indexLength = $row['Index_length'] ?? null;
         $status->dataFree = $row['Data_free'] ?? null;
