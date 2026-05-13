@@ -6,6 +6,7 @@ use Lagdo\DbAdmin\Driver\Sql\Dto\ColumnInputDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\IndexDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TableAlterDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TableCreateDto;
+use Lagdo\DbAdmin\Driver\Sql\Dto\TableDdlDto;
 use Lagdo\DbAdmin\Driver\Sql\Specific\Statement\AbstractTable;
 
 use function addcslashes;
@@ -34,6 +35,56 @@ class Table extends AbstractTable
     }
 
     /**
+     * @param TableDdlDto $table
+     *
+     * @return int
+     */
+    private function getAutoIncrementValue(TableDdlDto $table): int
+    {
+        $table->setupAutoIncrement();
+
+        return match(true) {
+            // Nothing to do for auto increment.
+            !$table->autoIncrementDefined() => 0,
+            // Create a new sequence.
+            $table->autoIncrementEnabled() =>
+                $table->hasAutoIncrement() ? $table->autoIncrement : 1,
+            // change the current auto increment value.
+            $table->autoIncrementValueChanged() => $table->autoIncrement,
+            // Drop the current sequence.
+            $table->autoIncrementDisabled() => 1,
+            default => 0,
+        };
+    }
+
+    /**
+     * @param TableDdlDto $table
+     *
+     * @return string
+     */
+    private function getTableOptions(TableDdlDto $table): string
+    {
+        $tableOptions = [];
+        if ($table->hasComment()) {
+            $tableOptions[] = 'COMMENT=' . $this->_engine()->quote($table->comment);
+        }
+        if ($table->engineChanged()) {
+            $tableOptions[] = 'ENGINE=' . $this->_engine()->quote($table->engine);
+        }
+        if ($table->collationChanged()) {
+            $tableOptions[] = 'COLLATE ' . $this->_engine()->quote($table->collation);
+        }
+        $autoIncrement = $this->getAutoIncrementValue($table);
+        if ($autoIncrement > 0) {
+            $tableOptions[] = "AUTO_INCREMENT={$autoIncrement}";
+        }
+
+        // Todo: append partitioning clauses to $status
+
+        return implode(' ', $tableOptions);
+    }
+
+    /**
      * @inheritDoc
      */
     public function getCreateTableQueries(TableCreateDto $table): array
@@ -54,9 +105,10 @@ class Table extends AbstractTable
         // Todo: append partitioning clauses to $status
         $tableName = $this->_statement()->escapeTableName($table->name);
         $clauses = implode(",\n  ", $clauses);
-        $status = $table->options($this->_engine()->quote(...));
+        $tableOptions = $this->getTableOptions($table);
 
-        return ["CREATE TABLE $tableName (\n  $clauses\n) $status"];
+        return ["CREATE TABLE $tableName (\n  $clauses\n)" .
+            ($tableOptions === '' ? '' : " $tableOptions")];
     }
 
     /**
@@ -73,11 +125,12 @@ class Table extends AbstractTable
     /**
      * @param TableAlterDto $table
      *
-     * @return string
+     * @return array
      */
-    public function getRenameTableClause(TableAlterDto $table): string
+    public function getRenameTableClause(TableAlterDto $table): array
     {
-        return 'RENAME TO ' . $this->_statement()->escapeTableName($table->name);
+        return !$table->nameChanged() ? [] :
+            ['RENAME TO ' . $this->_statement()->escapeTableName($table->name)];
     }
 
     /**
@@ -88,35 +141,9 @@ class Table extends AbstractTable
     public function columnChanged(ColumnInputDto $input): bool
     {
         return $input->nameChanged() || $input->nullableChanged() ||
-            $input->valueChanged() || $input->typeChanged() ||
-            $input->onUpdateChanged() || $input->commentChanged()
-            /* || $input->after !== ''*/;
-    }
-
-    private function getTableClauses(TableAlterDto $table): array
-    {
-        $tableClauses = $table->nameChanged() ? [$this->getRenameTableClause($table)] : [];
-
-        $tableOptions = [];
-        if ($table->commentChanged()) {
-            $tableOptions[] = 'COMMENT=' . $this->_engine()->quote($table->comment);
-        }
-        if ($table->engineChanged()) {
-            $tableOptions[] = 'ENGINE=' . $this->_engine()->quote($table->engine);
-        }
-        if ($table->collationChanged()) {
-            $tableOptions[] = 'COLLATE ' . $this->_engine()->quote($table->collation);
-        }
-        if ($table->hasAutoIncrement()) {
-            $tableOptions[] = "AUTO_INCREMENT={$table->autoIncrement}";
-        }
-        if (count($tableOptions) > 0) {
-            $tableClauses[] = implode(' ', $tableOptions);
-        }
-
-        // Todo: append partitioning clauses to $status
-
-        return $tableClauses;
+            $input->autoIncrementDefined() || $input->defaultChanged() ||
+            $input->typeChanged() || $input->onUpdateChanged() ||
+            $input->hasComment()/* || $input->after !== ''*/;
     }
 
     /**
@@ -139,14 +166,17 @@ class Table extends AbstractTable
             ...$editColumnsClauses,
             ...$this->getDropColumnClauses($table),
             ...$this->getForeignKeyClauses($table, 'ADD '),
-            ...$this->getTableClauses($table),
+            ...$this->getRenameTableClause($table),
         ];
+        $tableOptions = $this->getTableOptions($table);
+        if ($tableOptions !== '') {
+            $clauses[] = $tableOptions;
+        }
         if (count($clauses) === 0) {
             return [];
         }
 
-        $tableName = $this->_statement()->escapeTableName($table->current->name);
-
+        $tableName = $this->_statement()->escapeTableName($table->status->name);
         return ["ALTER TABLE $tableName\n  " . implode(",\n  ", $clauses)];
     }
 
@@ -158,9 +188,9 @@ class Table extends AbstractTable
         $tableName = $this->_statement()->escapeTableName($table);
         $query = $this->_engine()->columnValue("SHOW CREATE TABLE $tableName", 1);
         if (!$autoIncrement) {
-            $query = preg_replace('~ AUTO_INCREMENT=\d+~', '', $query); //! skip comments
+            //! skip comments
+            $query = preg_replace('~ AUTO_INCREMENT=\d+~', '', $query);
         }
-
         return $query;
     }
 
@@ -178,16 +208,16 @@ class Table extends AbstractTable
     public function getCreateTriggerQuery(string $table): string
     {
         $tableName = $this->_engine()->quote(addcslashes($table, "%_\\"));
+        $triggers = $this->_engine()->rows("SHOW TRIGGERS LIKE $tableName");
         $queries = array_map(function(array $row) {
             $trigger = $this->_statement()->escapeId($row['Trigger']);
             $triggerTable = $this->_statement()->escapeTableName($row['Table']);
             return "
 CREATE TRIGGER $trigger {$row['Timing']} {$row['Event']} ON $triggerTable FOR EACH ROW
-{$row['Statement']};;
-";
-        }, $this->_engine()->rows("SHOW TRIGGERS LIKE $tableName"));
+{$row['Statement']}";
+        }, $triggers);
 
-        return implode('', $queries);
+        return implode(";;\n", $queries);
     }
 
     /**

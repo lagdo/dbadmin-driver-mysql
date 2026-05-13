@@ -261,7 +261,7 @@ WHERE TABLE_SCHEMA = DATABASE() $querySuffix" :
      */
     private function makeStatus(array $row, string $table = ''): TableDto
     {
-        $status = new TableDto($row['Name']);
+        $status = new TableDto($row['Name'], $this->_engine()->columns(...));
         $status->engine = $row['Engine'] ?? '';
         $status->collation = $row['Collation'] ?? '';
         $status->hasAutoIncrement = isset($row['Auto_increment']);
