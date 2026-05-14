@@ -6,7 +6,7 @@ use Lagdo\DbAdmin\Driver\Sql\Dto\ColumnInputDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\IndexDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TableAlterDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TableCreateDto;
-use Lagdo\DbAdmin\Driver\Sql\Dto\TableDdlDto;
+use Lagdo\DbAdmin\Driver\Sql\Dto\TableDdDto;
 use Lagdo\DbAdmin\Driver\Sql\Specific\Statement\AbstractTable;
 
 use function addcslashes;
@@ -35,11 +35,11 @@ class Table extends AbstractTable
     }
 
     /**
-     * @param TableDdlDto $table
+     * @param TableDdDto $table
      *
      * @return int
      */
-    private function getAutoIncrementValue(TableDdlDto $table): int
+    private function getAutoIncrementValue(TableDdDto $table): int
     {
         $table->setupAutoIncrement();
 
@@ -58,11 +58,11 @@ class Table extends AbstractTable
     }
 
     /**
-     * @param TableDdlDto $table
+     * @param TableDdDto $table
      *
      * @return string
      */
-    private function getTableOptions(TableDdlDto $table): string
+    private function getTableOptions(TableDdDto $table): string
     {
         $tableOptions = [];
         if ($table->hasComment()) {

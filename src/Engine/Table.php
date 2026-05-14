@@ -42,7 +42,7 @@ class Table extends AbstractTable
     /**
      * @param array $match
      *
-     * @return array
+     * @return array<ForeignKeyDto>
      */
     private function makeTableForeignKey(array $match): array
     {
