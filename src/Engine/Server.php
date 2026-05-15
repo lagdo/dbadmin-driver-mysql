@@ -35,6 +35,7 @@ class Server extends AbstractServer
             $trans->lang('Geometry') => ["geometry" => 0, "point" => 0, "linestring" => 0, "polygon" => 0,
                 "multipoint" => 0, "multilinestring" => 0, "multipolygon" => 0, "geometrycollection" => 0],
         ];
+        $this->config->autoIncrementableTypes = ["tinyint", "smallint", "mediumint", "int", "bigint"];
         $this->config->unsigned = ["unsigned", "zerofill", "unsigned zerofill"];
         $this->config->operators = ["=", "<", ">", "<=", ">=", "!=", "LIKE", "LIKE %%",
             "REGEXP", "IN", "FIND_IN_SET", "IS NULL", "NOT LIKE", "NOT REGEXP",
