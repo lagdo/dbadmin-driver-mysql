@@ -13,17 +13,48 @@ use function addcslashes;
 use function array_map;
 use function count;
 use function implode;
+use function in_array;
 use function preg_match;
 use function preg_replace;
 
 class Table extends AbstractTable
 {
     /**
+     * @inheritDoc
+     */
+    protected function getColumnModifier(ColumnInputDto $input, TableDdDto $table): string
+    {
+        $indexModifier = $this->getPrimaryKeyModifier($input, $table);
+        if (!$input->autoIncrement) {
+            return $indexModifier;
+        }
+
+        // From function auto_increment() in mysql.inc.php.
+        // don't overwrite primary key by auto increment (in ALTER TABLE queries)
+        $autoIncrementColumn = $table->statusAutoIncrementColumn();
+        if ($autoIncrementColumn !== null) {
+            foreach ($this->_engine()->indexes($table->name) as $index) {
+                if (in_array($autoIncrementColumn->name, $index->columns, true)) {
+                    $indexModifier = '';
+                    break;
+                }
+
+                if ($index->type === 'PRIMARY') {
+                    $indexModifier = ' UNIQUE';
+                }
+            }
+        }
+
+        return " AUTO_INCREMENT$indexModifier";
+    }
+
+    /**
      * @param ColumnInputDto $input
+     * @param TableDdDto $table
      *
      * @return string
      */
-    protected function getAddColumnClause(ColumnInputDto $input): string
+    protected function getAddColumnClause(ColumnInputDto $input, TableDdDto $table): string
     {
         if (preg_match('~ GENERATED~', $input->default ?? '')) {
             // swap default and null
@@ -31,7 +62,7 @@ class Table extends AbstractTable
             $input->default = $this->_engine()->maria() ? '' : $input->nullable;
             $input->nullable = $input->hasDefault();
         }
-        return parent::getAddColumnClause($input) . $input->after;
+        return parent::getAddColumnClause($input, $table) . $input->after;
     }
 
     /**
@@ -45,7 +76,7 @@ class Table extends AbstractTable
 
         return match(true) {
             // Nothing to do for auto increment.
-            !$table->autoIncrementDefined() => 0,
+            !$table->autoIncrementChanged() => 0,
             // Create a new sequence.
             $table->autoIncrementEnabled() =>
                 $table->hasAutoIncrement() ? $table->autoIncrement : 1,
@@ -93,7 +124,14 @@ class Table extends AbstractTable
             return [];
         }
 
-        $clauses = array_map($this->getAddColumnClause(...), $table->addedColumns());
+        $inputs = $table->addedColumns();
+        $clauses = array_map(fn(ColumnInputDto $input) =>
+            $this->getAddColumnClause($input, $table), $inputs);
+
+        if ($table->primaryKeyColumnCount() > 1) {
+            $clauses[] = $table->primaryKeyClause($this->_statement()->escapeId(...));
+        }
+
         $clauses = [
             ...$clauses,
             ...$this->getForeignKeyClauses($table, 'ADD '),
@@ -112,14 +150,17 @@ class Table extends AbstractTable
     }
 
     /**
+     * @param ColumnInputDto $input
+     * @param TableAlterDto $table
+     *
      * @return string
      */
-    private function getEditColumnClause(ColumnInputDto $input): string
+    private function getEditColumnClause(ColumnInputDto $input, TableAlterDto $table): string
     {
         $currName = $this->_statement()->escapeId($input->column->name);
 
         // The column rename is done here, if the new name is different.
-        return "CHANGE $currName " . $this->getAddColumnClause($input);
+        return "CHANGE $currName " . $this->getAddColumnClause($input, $table);
     }
 
     /**
@@ -141,7 +182,7 @@ class Table extends AbstractTable
     public function columnChanged(ColumnInputDto $input): bool
     {
         return $input->nameChanged() || $input->nullableChanged() ||
-            $input->autoIncrementDefined() || $input->defaultChanged() ||
+            $input->autoIncrementChanged() || $input->defaultChanged() ||
             $input->typeChanged() || $input->onUpdateChanged() ||
             $input->hasComment()/* || $input->after !== ''*/;
     }
@@ -155,11 +196,12 @@ class Table extends AbstractTable
             return [];
         }
 
-        $addColumnsClauses = array_map(fn(ColumnInputDto $input) =>
-            "ADD " . $this->getAddColumnClause($input), $table->addedColumns());
+        $addColumnsClauses = array_map(fn(ColumnInputDto $input) => "ADD " .
+            $this->getAddColumnClause($input, $table), $table->addedColumns());
 
         $changedColumns = array_filter($table->editedColumns(), $this->columnChanged(...));
-        $editColumnsClauses = array_map($this->getEditColumnClause(...), $changedColumns);
+        $editColumnsClauses = array_map(fn(ColumnInputDto $input) =>
+            $this->getEditColumnClause($input, $table), $changedColumns);
 
         $clauses = [
             ...$addColumnsClauses,

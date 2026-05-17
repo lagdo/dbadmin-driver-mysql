@@ -6,7 +6,6 @@ use Lagdo\DbAdmin\Driver\Sql\Specific\Statement\AbstractDatabase;
 
 use function array_map;
 use function implode;
-use function in_array;
 use function preg_match;
 
 class Database extends AbstractDatabase
@@ -22,6 +21,7 @@ class Database extends AbstractDatabase
         if (!preg_match('~CREATE~', $style)) {
             return '';
         }
+
         $create = $this->_engine()->columnValue("SHOW CREATE DATABASE $database", 1);
         if (!$create) {
             return '';
@@ -61,34 +61,11 @@ class Database extends AbstractDatabase
     /**
      * @inheritDoc
      */
-    public function getAutoIncrementModifier(): string
-    {
-        $autoIncrementIndex = " PRIMARY KEY";
-        // don't overwrite primary key by auto increment
-        $table = $this->_utils()->input->getTable();
-        $columns = $this->_utils()->input->getColumns();
-        $autoIncrementColumn = $this->_utils()->input->getAutoIncrementColumn();
-        if ($table != "" && $autoIncrementColumn) {
-            foreach ($this->_engine()->indexes($table) as $index) {
-                if (in_array($columns[$autoIncrementColumn]["orig"], $index->columns, true)) {
-                    $autoIncrementIndex = "";
-                    break;
-                }
-                if ($index->type == "PRIMARY") {
-                    $autoIncrementIndex = " UNIQUE";
-                }
-            }
-        }
-        return " AUTO_INCREMENT$autoIncrementIndex";
-    }
-
-    /**
-     * @inheritDoc
-     */
     public function getDropViewsQueries(array $views): array
     {
         return [
-            'DROP VIEW ' . implode(', ', array_map($this->_statement()->escapeTableName(...), $views)),
+            'DROP VIEW ' . implode(', ',
+                array_map($this->_statement()->escapeTableName(...), $views)),
         ];
     }
 
@@ -98,7 +75,8 @@ class Database extends AbstractDatabase
     public function getDropTablesQueries(array $tables): array
     {
         return [
-            'DROP TABLE ' . implode(', ', array_map($this->_statement()->escapeTableName(...), $tables)),
+            'DROP TABLE ' . implode(', ',
+                array_map($this->_statement()->escapeTableName(...), $tables)),
         ];
     }
 
@@ -107,7 +85,7 @@ class Database extends AbstractDatabase
      */
     public function getTruncateTablesQueries(array $tables): array
     {
-        return array_map(fn(string $table) =>
-            'TRUNCATE TABLE ' . $this->_statement()->escapeTableName($table), $tables);
+        return array_map(fn(string $table) => 'TRUNCATE TABLE ' .
+            $this->_statement()->escapeTableName($table), $tables);
     }
 }
