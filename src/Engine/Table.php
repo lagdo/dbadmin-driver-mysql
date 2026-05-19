@@ -210,10 +210,6 @@ AND PARTITION_NAME != '' ORDER BY PARTITION_ORDINAL_POSITION";
         $generated = $generated[1] ?? '';
         $column->generated = $generated === "PERSISTENT" ? "STORED" : $generated;
 
-        if ($column->autoIncrement && is_a($table, TableDto::class)) {
-            $table->autoIncrementColumn = $column->name;
-        }
-
         return $column;
     }
 
@@ -265,7 +261,7 @@ WHERE TABLE_SCHEMA = DATABASE() $querySuffix" :
         $status->engine = $row['Engine'] ?? '';
         $status->collation = $row['Collation'] ?? '';
         $status->hasAutoIncrement = isset($row['Auto_increment']);
-        $status->autoIncrementValue = $row['Auto_increment'] ?? 0;
+        $status->autoIncrement = $row['Auto_increment'] ?? 0;
         $status->dataLength = $row['Data_length'] ?? null;
         $status->indexLength = $row['Index_length'] ?? null;
         $status->dataFree = $row['Data_free'] ?? null;
