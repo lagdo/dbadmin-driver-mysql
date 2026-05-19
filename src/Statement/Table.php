@@ -2,7 +2,7 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Statement;
 
-use Lagdo\DbAdmin\Driver\Sql\Dto\ColumnInputDto;
+use Lagdo\DbAdmin\Driver\Sql\Dto\ColumnDdDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\IndexDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TableAlterDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TableCreateDto;
@@ -22,7 +22,7 @@ class Table extends AbstractTable
     /**
      * @inheritDoc
      */
-    protected function getColumnModifier(ColumnInputDto $input, TableDdDto $table): string
+    protected function getColumnModifier(ColumnDdDto $input, TableDdDto $table): string
     {
         $indexModifier = $this->getPrimaryKeyModifier($input, $table);
         if (!$input->autoIncrement) {
@@ -49,12 +49,12 @@ class Table extends AbstractTable
     }
 
     /**
-     * @param ColumnInputDto $input
+     * @param ColumnDdDto $input
      * @param TableDdDto $table
      *
      * @return string
      */
-    protected function getAddColumnClause(ColumnInputDto $input, TableDdDto $table): string
+    protected function getAddColumnClause(ColumnDdDto $input, TableDdDto $table): string
     {
         if (preg_match('~ GENERATED~', $input->default ?? '')) {
             // swap default and null
@@ -125,7 +125,7 @@ class Table extends AbstractTable
         }
 
         $inputs = $table->addedColumns();
-        $clauses = array_map(fn(ColumnInputDto $input) =>
+        $clauses = array_map(fn(ColumnDdDto $input) =>
             $this->getAddColumnClause($input, $table), $inputs);
 
         if ($table->primaryKeyColumnCount() > 1) {
@@ -150,12 +150,12 @@ class Table extends AbstractTable
     }
 
     /**
-     * @param ColumnInputDto $input
+     * @param ColumnDdDto $input
      * @param TableAlterDto $table
      *
      * @return string
      */
-    private function getEditColumnClause(ColumnInputDto $input, TableAlterDto $table): string
+    private function getEditColumnClause(ColumnDdDto $input, TableAlterDto $table): string
     {
         $currName = $this->_statement()->escapeId($input->column->name);
 
@@ -175,11 +175,11 @@ class Table extends AbstractTable
     }
 
     /**
-     * @param ColumnInputDto $input
+     * @param ColumnDdDto $input
      *
      * @return bool
      */
-    public function columnChanged(ColumnInputDto $input): bool
+    public function columnChanged(ColumnDdDto $input): bool
     {
         return $input->nameChanged() || $input->nullableChanged() ||
             $input->autoIncrementChanged() || $input->defaultChanged() ||
@@ -196,11 +196,11 @@ class Table extends AbstractTable
             return [];
         }
 
-        $addColumnsClauses = array_map(fn(ColumnInputDto $input) => "ADD " .
+        $addColumnsClauses = array_map(fn(ColumnDdDto $input) => "ADD " .
             $this->getAddColumnClause($input, $table), $table->addedColumns());
 
         $changedColumns = array_filter($table->editedColumns(), $this->columnChanged(...));
-        $editColumnsClauses = array_map(fn(ColumnInputDto $input) =>
+        $editColumnsClauses = array_map(fn(ColumnDdDto $input) =>
             $this->getEditColumnClause($input, $table), $changedColumns);
 
         $clauses = [
