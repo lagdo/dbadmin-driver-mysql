@@ -3,7 +3,6 @@
 namespace Lagdo\DbAdmin\Driver\MySql\Statement;
 
 use Lagdo\DbAdmin\Driver\Sql\Dto\ColumnDto;
-use Lagdo\DbAdmin\Driver\Sql\Dto\SelectInputDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\UpsertDto;
 use Lagdo\DbAdmin\Driver\Sql\Specific\Statement\AbstractQuery;
 use stdClass;
@@ -11,7 +10,6 @@ use stdClass;
 use function array_keys;
 use function array_map;
 use function array_slice;
-use function count;
 use function implode;
 use function preg_match;
 
@@ -20,22 +18,9 @@ class Query extends AbstractQuery
     /**
      * @inheritDoc
      */
-    public function limitToOne(string $table, string $query, string $where): string
+    protected function limitToOne(string $table, string $query, string $where): string
     {
-        return $this->getLimitClause($query, $where, 1, 0);
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function getTableSelectQuery(SelectInputDto $input): string
-    {
-        $prefix = '';
-        if (($input->page) && ($input->limit) && !empty($input->group) &&
-            count($input->group) < count($input->columns)) {
-            $prefix = 'SQL_CALC_FOUND_ROWS ';
-        }
-        return $prefix . parent::getTableSelectQuery($input);
+        return $this->addLimitClause("$query$where", 1, 0);
     }
 
     /**

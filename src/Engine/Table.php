@@ -382,7 +382,7 @@ WHERE TABLE_SCHEMA = DATABASE() $querySuffix" :
     /**
      * @inheritDoc
      */
-    public function trigger(string $name, string $table = ''): TriggerDto|null
+    public function trigger(string $name, string $table): TriggerDto|null
     {
         if ($name == '') {
             return null;
