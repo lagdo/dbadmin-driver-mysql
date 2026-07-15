@@ -3,11 +3,13 @@
 namespace Lagdo\DbAdmin\Driver\MySql\Statement;
 
 use Lagdo\DbAdmin\Driver\Sql\Dto\ColumnDdDto;
+use Lagdo\DbAdmin\Driver\Sql\Dto\ColumnDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\IndexDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TableAlterDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TableCreateDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TableDdDto;
 use Lagdo\DbAdmin\Driver\Sql\Specific\Statement\AbstractTable;
+use Exception;
 
 use function addcslashes;
 use function array_map;
@@ -24,7 +26,7 @@ class Table extends AbstractTable
      */
     protected function getColumnModifier(ColumnDdDto $input, TableDdDto $table): string
     {
-        $indexModifier = $this->getPrimaryKeyModifier($input, $table);
+        $indexModifier = ''; //$this->getPrimaryKeyModifier($input, $table);
         if (!$input->autoIncrement) {
             return $indexModifier;
         }
@@ -72,18 +74,14 @@ class Table extends AbstractTable
      */
     private function getAutoIncrementValue(TableDdDto $table): int
     {
-        $table->setupAutoIncrement();
-
         return match(true) {
             // Nothing to do for auto increment.
             !$table->autoIncrementChanged() => 0,
             // Create a new sequence.
             $table->autoIncrementAdded() =>
                 $table->hasAutoIncrement() ? $table->autoIncrement : 1,
-            // change the current auto increment value.
+            // Change the current auto increment value.
             $table->autoIncrementValueChanged() => $table->autoIncrement,
-            // Drop the current sequence.
-            $table->autoIncrementRemoved() => 1,
             default => 0,
         };
     }
@@ -105,8 +103,8 @@ class Table extends AbstractTable
         if ($table->collationChanged()) {
             $tableOptions[] = 'COLLATE ' . $this->_engine()->quote($table->collation);
         }
-        $autoIncrement = $this->getAutoIncrementValue($table);
-        if ($autoIncrement > 0) {
+        if (!$table->autoIncrementRemoved()) {
+            $autoIncrement = $this->getAutoIncrementValue($table);
             $tableOptions[] = "AUTO_INCREMENT={$autoIncrement}";
         }
 
@@ -116,24 +114,37 @@ class Table extends AbstractTable
     }
 
     /**
+     * @param TableCreateDto $table
+     *
+     * @return array
+     */
+    private function getCreatePrimaryKeyClause(TableCreateDto $table): array
+    {
+        $columns = array_filter($table->columns, fn(ColumnDto $column) => $column->primary);
+        if (count($columns) === 0) {
+            return [];
+        }
+
+        $columnNames = implode(', ', array_map(fn(ColumnDdDto $column) =>
+            $this->_statement()->escapeId($column->name), $columns));
+        return ["PRIMARY KEY ($columnNames)"];
+    }
+
+    /**
      * @inheritDoc
      */
     public function getCreateTableQueries(TableCreateDto $table): array
     {
         if ($table->name === '') {
-            return [];
+            throw new Exception($this->_utils()->lang('The table name must be defined.'));
         }
 
-        $inputs = $table->addedColumns();
         $clauses = array_map(fn(ColumnDdDto $input) =>
-            $this->getAddColumnClause($input, $table), $inputs);
-
-        if ($table->primaryKeyColumnCount() > 1) {
-            $clauses[] = $table->primaryKeyClause($this->_statement()->escapeId(...));
-        }
+            $this->getAddColumnClause($input, $table), $table->addedColumns());
 
         $clauses = [
             ...$clauses,
+            ...$this->getCreatePrimaryKeyClause($table),
             ...$this->getForeignKeyClauses($table, 'ADD '),
         ];
         if (count($clauses) === 0) {
@@ -157,7 +168,7 @@ class Table extends AbstractTable
      */
     private function getEditColumnClause(ColumnDdDto $input, TableAlterDto $table): string
     {
-        $currName = $this->_statement()->escapeId($input->column->name);
+        $currName = $this->_statement()->escapeId($input->statusName());
 
         // The column rename is done here, if the new name is different.
         return "CHANGE $currName " . $this->getAddColumnClause($input, $table);
@@ -177,15 +188,71 @@ class Table extends AbstractTable
     }
 
     /**
-     * @param TableAlterDto $table
-     * @param string $nextName
-     *
-     * @return string
+     * @return bool
      */
-    private function getRenameTableQuery(TableAlterDto $table, string $nextName): string
+    protected function primaryKeyChanged(TableAlterDto $table): bool
     {
-        $currName = $this->_statement()->escapeTableName($table->status->name);
-        return "ALTER TABLE $currName RENAME TO $nextName";
+        // Check if the auto increment is removed on a primary key.
+        foreach ($table->editedColumns() as $column) {
+            if ($column->column->primary && $column->autoIncrementChanged()) {
+                return true;
+            }
+        }
+        return $table->primaryKeyChanged();
+    }
+
+    /**
+     * @param TableAlterDto $table
+     *
+     * @return array
+     */
+    private function getDropPrimaryKeyQuery(TableAlterDto $table): array
+    {
+        if (!$this->primaryKeyChanged($table)) {
+            return [];
+        }
+
+        // Use the previous table name.
+        $tableName = $this->_statement()->escapeTableName($table->statusName());
+        return ["ALTER TABLE $tableName DROP PRIMARY KEY"];
+    }
+
+    /**
+     * @param TableAlterDto $table
+     *
+     * @return array
+     */
+    private function getCreatePrimaryKeyQuery(TableAlterDto $table): array
+    {
+        if (!$this->primaryKeyChanged($table)) {
+            return [];
+        }
+
+        $columns = array_filter($table->columns, fn(ColumnDto $column) => $column->primary);
+        if (count($columns) === 0) {
+            return [];
+        }
+
+        $nextName = $this->_statement()->escapeTableName($table->name);
+        $columnNames = implode(', ', array_map(fn(ColumnDdDto $column) =>
+            $this->_statement()->escapeId($column->name), $columns));
+        return ["ALTER TABLE $nextName ADD PRIMARY KEY ($columnNames)"];
+    }
+
+    /**
+     * @param TableAlterDto $table
+     *
+     * @return array
+     */
+    private function getRenameTableQuery(TableAlterDto $table): array
+    {
+        if (!$table->nameChanged()) {
+            return [];
+        }
+
+        $currName = $this->_statement()->escapeTableName($table->statusName());
+        $nextName = $this->_statement()->escapeTableName($table->name);
+        return ["ALTER TABLE $currName RENAME TO $nextName"];
     }
 
     /**
@@ -194,7 +261,7 @@ class Table extends AbstractTable
     public function getAlterTableQueries(TableAlterDto $table): array
     {
         if ($table->name === '') {
-            return [];
+            throw new Exception($this->_utils()->lang('The table name must be defined.'));
         }
 
         $addColumnsClauses = array_map(fn(ColumnDdDto $input) => "ADD " .
@@ -219,11 +286,11 @@ class Table extends AbstractTable
         }
 
         $tableName = $this->_statement()->escapeTableName($table->name);
-        return $table->nameChanged() ? [
-            $this->getRenameTableQuery($table, $tableName),
+        return [
+            ...$this->getDropPrimaryKeyQuery($table),
+            ...$this->getRenameTableQuery($table),
             "ALTER TABLE $tableName\n  " . implode(",\n  ", $clauses),
-        ] : [
-            "ALTER TABLE $tableName\n  " . implode(",\n  ", $clauses),
+            ...$this->getCreatePrimaryKeyQuery($table),
         ];
     }
 
