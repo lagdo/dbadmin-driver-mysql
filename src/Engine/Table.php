@@ -42,7 +42,7 @@ class Table extends AbstractTable
     /**
      * @param array $match
      *
-     * @return array<ForeignKeyDto>
+     * @return array<string|ForeignKeyDto>
      */
     private function makeTableForeignKey(array $match): array
     {
@@ -196,7 +196,7 @@ AND PARTITION_NAME != '' ORDER BY PARTITION_ORDINAL_POSITION";
         $column->collation = $row["COLLATION_NAME"] ?? '';
         $column->comment = $row["COLUMN_COMMENT"] ?? null;
         $column->primary = $row["COLUMN_KEY"] === "PRI";
- 
+
         //! available since MySQL 5.1.23
         $column->onUpdate = preg_match('~\bon update (\w+)~i', $extra, $match) ? $match[1] : '';
         $privileges = explode(",", $row["PRIVILEGES"] ?? '');

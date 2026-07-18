@@ -22,6 +22,7 @@
     "require-dev": {
         "ext-mysqli": "*",
         "ext-pdo": "*",
+        "ext-pdo_mysql": "*",
         "phpunit/phpunit": "^9.5",
         "behat/behat": "^3.10",
         "dvdoug/behat-code-coverage": "5.0.*",
