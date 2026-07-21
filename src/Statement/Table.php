@@ -2,14 +2,14 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Statement;
 
+use Lagdo\DbAdmin\Driver\Exception\DbException;
 use Lagdo\DbAdmin\Driver\Sql\Dto\ColumnDdDto;
-use Lagdo\DbAdmin\Driver\Sql\Dto\ColumnDto;
+use Lagdo\DbAdmin\Driver\Sql\Dto\ForeignKeyDdDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\IndexDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TableAlterDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TableCreateDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\TableDdDto;
 use Lagdo\DbAdmin\Driver\Sql\Specific\Statement\AbstractTable;
-use Exception;
 
 use function addcslashes;
 use function array_map;
@@ -26,28 +26,46 @@ class Table extends AbstractTable
      */
     protected function getColumnModifier(ColumnDdDto $input, TableDdDto $table): string
     {
-        $indexModifier = ''; //$this->getPrimaryKeyModifier($input, $table);
+        // $indexModifier = $this->getPrimaryKeyModifier($input, $table);
         if (!$input->autoIncrement) {
-            return $indexModifier;
+            return ''; // No auto increment.
         }
 
         // From function auto_increment() in mysql.inc.php.
         // don't overwrite primary key by auto increment (in ALTER TABLE queries)
         $autoIncrementColumn = $table->statusAutoIncrementColumn();
-        if ($autoIncrementColumn !== null) {
-            foreach ($this->_engine()->indexes($table->name) as $index) {
-                if (in_array($autoIncrementColumn->name, $index->columns, true)) {
-                    $indexModifier = '';
-                    break;
-                }
-
-                if ($index->type === 'PRIMARY') {
-                    $indexModifier = ' UNIQUE';
-                }
-            }
+        if ($autoIncrementColumn === null) {
+            return ' AUTO_INCREMENT'; // No previous auto increment.
         }
 
+        $indexModifier = '';
+        foreach ($this->_engine()->indexes($table->name) as $index) {
+            if (in_array($autoIncrementColumn->name, $index->columns, true)) {
+                $indexModifier = ''; // Can erase the UNIQUE value.
+                break;
+            }
+
+            if ($index->type === 'PRIMARY') {
+                $indexModifier = ' UNIQUE';
+            }
+        }
         return " AUTO_INCREMENT$indexModifier";
+    }
+
+    /**
+     * @param TableDdDto $table
+     *
+     * @return bool
+     */
+    protected function primaryKeyChanged(TableDdDto $table): bool
+    {
+        // Check if the auto increment is removed on a primary key.
+        foreach ($table->editedColumns() as $column) {
+            if ($column->column->primary && $column->autoIncrementChanged()) {
+                return true;
+            }
+        }
+        return $table->primaryKeyChanged();
     }
 
     /**
@@ -103,31 +121,12 @@ class Table extends AbstractTable
         if ($table->collationChanged()) {
             $tableOptions[] = 'COLLATE ' . $this->_engine()->quote($table->collation);
         }
-        if (!$table->autoIncrementRemoved()) {
-            $autoIncrement = $this->getAutoIncrementValue($table);
-            $tableOptions[] = "AUTO_INCREMENT={$autoIncrement}";
+        if ($table->autoIncrementInput() !== null) {
+            $tableOptions[] = 'AUTO_INCREMENT=' . $this->getAutoIncrementValue($table);
         }
 
         // Todo: append partitioning clauses to $status
-
         return implode(' ', $tableOptions);
-    }
-
-    /**
-     * @param TableCreateDto $table
-     *
-     * @return array
-     */
-    private function getCreatePrimaryKeyClause(TableCreateDto $table): array
-    {
-        $columns = array_filter($table->columns, fn(ColumnDto $column) => $column->primary);
-        if (count($columns) === 0) {
-            return [];
-        }
-
-        $columnNames = implode(', ', array_map(fn(ColumnDdDto $column) =>
-            $this->_statement()->escapeId($column->name), $columns));
-        return ["PRIMARY KEY ($columnNames)"];
     }
 
     /**
@@ -136,7 +135,7 @@ class Table extends AbstractTable
     public function getCreateTableQueries(TableCreateDto $table): array
     {
         if ($table->name === '') {
-            throw new Exception($this->_utils()->lang('The table name must be defined.'));
+            throw new DbException($this->_utils()->lang('The table name must be defined.'));
         }
 
         $clauses = array_map(fn(ColumnDdDto $input) =>
@@ -145,7 +144,7 @@ class Table extends AbstractTable
         $clauses = [
             ...$clauses,
             ...$this->getCreatePrimaryKeyClause($table),
-            ...$this->getForeignKeyClauses($table, 'ADD '),
+            ...$this->getCreateForeignKeyClauses($table),
         ];
         if (count($clauses) === 0) {
             return [];
@@ -168,10 +167,10 @@ class Table extends AbstractTable
      */
     private function getEditColumnClause(ColumnDdDto $input, TableAlterDto $table): string
     {
-        $currName = $this->_statement()->escapeId($input->statusName());
-
         // The column rename is done here, if the new name is different.
-        return "CHANGE $currName " . $this->getAddColumnClause($input, $table);
+        $currName = $this->_statement()->escapeId($input->statusName());
+        $clause = $this->getAddColumnClause($input, $table);
+        return "CHANGE $currName $clause";
     }
 
     /**
@@ -188,55 +187,24 @@ class Table extends AbstractTable
     }
 
     /**
-     * @return bool
+    * @inheritDoc
      */
-    protected function primaryKeyChanged(TableAlterDto $table): bool
+    protected function getDropPrimaryKeyClause(TableAlterDto $table): array
     {
-        // Check if the auto increment is removed on a primary key.
-        foreach ($table->editedColumns() as $column) {
-            if ($column->column->primary && $column->autoIncrementChanged()) {
-                return true;
-            }
-        }
-        return $table->primaryKeyChanged();
+        return $this->primaryKeyChanged($table) ? ['DROP PRIMARY KEY'] : [];
     }
 
     /**
-     * @param TableAlterDto $table
-     *
-     * @return array
+    * @inheritDoc
      */
-    private function getDropPrimaryKeyQuery(TableAlterDto $table): array
+    protected function getDeleteForeignKeyClauses(TableAlterDto $table): array
     {
-        if (!$this->primaryKeyChanged($table)) {
-            return [];
-        }
-
-        // Use the previous table name.
-        $tableName = $this->_statement()->escapeTableName($table->statusName());
-        return ["ALTER TABLE $tableName DROP PRIMARY KEY"];
-    }
-
-    /**
-     * @param TableAlterDto $table
-     *
-     * @return array
-     */
-    private function getCreatePrimaryKeyQuery(TableAlterDto $table): array
-    {
-        if (!$this->primaryKeyChanged($table)) {
-            return [];
-        }
-
-        $columns = array_filter($table->columns, fn(ColumnDto $column) => $column->primary);
-        if (count($columns) === 0) {
-            return [];
-        }
-
-        $nextName = $this->_statement()->escapeTableName($table->name);
-        $columnNames = implode(', ', array_map(fn(ColumnDdDto $column) =>
-            $this->_statement()->escapeId($column->name), $columns));
-        return ["ALTER TABLE $nextName ADD PRIMARY KEY ($columnNames)"];
+        $filter = fn(ForeignKeyDdDto $foreignKey) =>
+            $foreignKey->edited() || $foreignKey->dropped();
+        $foreignKeys = array_filter($table->foreignKeys, $filter);
+        $formatter = fn(ForeignKeyDdDto $foreignKey) =>
+            'DROP FOREIGN KEY ' . $this->_statement()->escapeId($foreignKey->name);
+        return array_map($formatter, $foreignKeys);
     }
 
     /**
@@ -261,7 +229,7 @@ class Table extends AbstractTable
     public function getAlterTableQueries(TableAlterDto $table): array
     {
         if ($table->name === '') {
-            throw new Exception($this->_utils()->lang('The table name must be defined.'));
+            throw new DbException($this->_utils()->lang('The table name must be defined.'));
         }
 
         $addColumnsClauses = array_map(fn(ColumnDdDto $input) => "ADD " .
@@ -275,7 +243,8 @@ class Table extends AbstractTable
             ...$addColumnsClauses,
             ...$changeColumnsClauses,
             ...$this->getDropColumnClauses($table),
-            ...$this->getForeignKeyClauses($table, 'ADD '),
+            ...$this->getCreatePrimaryKeyClause($table, 'ADD '),
+            ...$this->getCreateForeignKeyClauses($table, 'ADD '),
         ];
         $tableOptions = $this->getTableOptions($table);
         if ($tableOptions !== '') {
@@ -287,10 +256,9 @@ class Table extends AbstractTable
 
         $tableName = $this->_statement()->escapeTableName($table->name);
         return [
-            ...$this->getDropPrimaryKeyQuery($table),
+            ...$this->getDropConstraintsQuery($table),
             ...$this->getRenameTableQuery($table),
             "ALTER TABLE $tableName\n  " . implode(",\n  ", $clauses),
-            ...$this->getCreatePrimaryKeyQuery($table),
         ];
     }
 
