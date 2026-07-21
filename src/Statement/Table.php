@@ -2,7 +2,7 @@
 
 namespace Lagdo\DbAdmin\Driver\MySql\Statement;
 
-use Lagdo\DbAdmin\Driver\Exception\DbException;
+use Lagdo\DbAdmin\Driver\Exception\DriverException;
 use Lagdo\DbAdmin\Driver\Sql\Dto\ColumnDdDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\ForeignKeyDdDto;
 use Lagdo\DbAdmin\Driver\Sql\Dto\IndexDto;
@@ -135,7 +135,7 @@ class Table extends AbstractTable
     public function getCreateTableQueries(TableCreateDto $table): array
     {
         if ($table->name === '') {
-            throw new DbException($this->_utils()->lang('The table name must be defined.'));
+            throw new DriverException($this->_utils()->lang('The table name must be defined.'));
         }
 
         $clauses = array_map(fn(ColumnDdDto $input) =>
@@ -229,7 +229,7 @@ class Table extends AbstractTable
     public function getAlterTableQueries(TableAlterDto $table): array
     {
         if ($table->name === '') {
-            throw new DbException($this->_utils()->lang('The table name must be defined.'));
+            throw new DriverException($this->_utils()->lang('The table name must be defined.'));
         }
 
         $addColumnsClauses = array_map(fn(ColumnDdDto $input) => "ADD " .
