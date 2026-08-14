@@ -227,12 +227,13 @@ class Server extends AbstractServer
     {
         $collations = [];
         foreach ($this->_engine()->rows('SHOW COLLATION') as $row) {
+            $charset = $row['Charset'] ?? '';
             if ($row['Default']) {
-                $collations[$row['Charset']][-1] = $row['Collation'];
+                $collations[$charset][-1] = $row['Collation'];
                 continue;
             }
             // Else
-            $collations[$row['Charset']][] = $row['Collation'];
+            $collations[$charset][] = $row['Collation'];
         }
         ksort($collations);
         foreach ($collations as $key => $val) {
