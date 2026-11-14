@@ -12,7 +12,6 @@ use mysqli_stmt;
 use function ini_get;
 use function intval;
 use function is_numeric;
-use function mysqli_init;
 use function mysqli_report;
 
 /**
@@ -25,9 +24,9 @@ class Connection extends AbstractConnection
     /**
      * The client object used to query the database driver
      *
-     * @var mysqli|bool
+     * @var mysqli|null
      */
-    protected mysqli|bool $client;
+    protected mysqli|null $client = null;
 
     /**
     * @inheritDoc
@@ -41,7 +40,7 @@ class Connection extends AbstractConnection
         $socket = null;
 
         // Create the MySQLi client
-        $this->client = mysqli_init();
+        $this->client = new mysqli();
 
         // Specify the connection timeout (both timeouts need to be set)
         // See https://stackoverflow.com/questions/64853050/why-mysqli-connect-doesnt-respect-mysqli-opt-connect-timeout
@@ -54,15 +53,15 @@ class Connection extends AbstractConnection
         }
 
         $server = $port === '' ? $host : "$host:$port";
-        if (!@$this->client->real_connect(
+        if (!@$this->client->connect(
             ($server !== '' ? $host : ini_get('mysqli.default_host')),
             ($server . $username !== '' ? $username : ini_get('mysqli.default_user')),
             ($server . $username . $password !== '' ? $password : ini_get('mysqli.default_pw')),
             $database,
             (is_numeric($port) ? intval($port) : intval(ini_get('mysqli.default_port'))),
             (!is_numeric($port) ? $port : $socket),
-            ($ssl ? MYSQLI_CLIENT_SSL_DONT_VERIFY_SERVER_CERT : 0) // (not available before PHP 5.6.16)
         )) {
+            $this->client = null;
             return false;
         }
 
@@ -74,6 +73,15 @@ class Connection extends AbstractConnection
         $this->setCharset($this->_engine()->charset());
         $this->executeQuery('SET sql_quote_show_create = 1, autocommit = 1');
         return true;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function close(): void
+    {
+        $this->client->close();
+        $this->client = null;
     }
 
     /**
